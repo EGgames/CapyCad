@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -602,12 +602,46 @@ export function BooleanDialog({
   featureNames: Array<{ id: string; name: string }>;
 }) {
   const [operation, setOperation] = useState<'union' | 'subtract' | 'intersect'>('union');
-  const [targetId, setTargetId] = useState(featureNames[0]?.id ?? '');
-  const [toolId, setToolId] = useState(featureNames[1]?.id ?? '');
+  const [targetId, setTargetId] = useState('');
+  const [toolId, setToolId] = useState('');
+
+  // Sync defaults whenever the dialog opens or the features list changes,
+  // so the selects never stay on a stale / empty id.
+  useEffect(() => {
+    if (!open) return;
+    const ids = featureNames.map((f) => f.id);
+    setTargetId((prev) => (prev && ids.includes(prev) ? prev : (ids[0] ?? '')));
+    setToolId((prev) => {
+      if (prev && ids.includes(prev) && prev !== (ids[0] ?? '')) return prev;
+      return ids[1] ?? ids[0] ?? '';
+    });
+  }, [open, featureNames]);
+
+  const noFeatures = featureNames.length === 0;
+  const onlyOne = featureNames.length === 1;
 
   return (
     <Dialog title="Operación Booleana" open={open} onClose={onClose}>
       <div className="space-y-4">
+        {noFeatures && (
+          <p
+            data-testid="boolean-empty-msg"
+            className="rounded border border-yellow-500/40 bg-yellow-950/30 p-2 text-xs text-yellow-300"
+          >
+            No hay extrusiones disponibles. Crea al menos dos extrusiones (Extrude) para
+            aplicar una operación booleana.
+          </p>
+        )}
+        {onlyOne && (
+          <p
+            data-testid="boolean-onlyone-msg"
+            className="rounded border border-yellow-500/40 bg-yellow-950/30 p-2 text-xs text-yellow-300"
+          >
+            Solo hay una extrusión. Necesitas al menos dos extrusiones para una operación
+            booleana.
+          </p>
+        )}
+
         <BooleanOperationSelector value={operation} onChange={setOperation} />
 
         <SelectField

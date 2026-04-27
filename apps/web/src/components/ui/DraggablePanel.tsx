@@ -1,20 +1,31 @@
 import { useRef, useCallback, useState, type ReactNode, type MouseEvent } from 'react';
 import { cn } from '@/lib/utils';
-import { GripHorizontal, X } from 'lucide-react';
-import type { PanelId, PanelPosition } from '@/stores/uiStore';
+import { GripHorizontal, X, PinOff } from 'lucide-react';
+import type { PanelId, DockSide } from '@/stores/uiStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useDockDragStore } from './dockDragStore';
+import { PanelOrientationContext, type PanelOrientation } from './panelOrientation';
 
 interface DraggablePanelProps {
   id: PanelId;
   title: string;
   children: ReactNode;
   className?: string;
-  /** Initial position used only on first render */
-  defaultPosition?: PanelPosition;
-  /** Allow closing via X button */
   closable?: boolean;
-  /** Extra header content (right side, before close button) */
   headerExtra?: ReactNode;
+}
+
+const SNAP_THRESHOLD = 60; // px from edge to trigger dock
+
+function detectDockSide(x: number, y: number): DockSide {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  // Order matters: top/bottom take precedence in corners
+  if (y < SNAP_THRESHOLD) return 'top';
+  if (h - y < SNAP_THRESHOLD) return 'bottom';
+  if (x < SNAP_THRESHOLD) return 'left';
+  if (w - x < SNAP_THRESHOLD) return 'right';
+  return 'floating';
 }
 
 export default function DraggablePanel({
@@ -27,7 +38,9 @@ export default function DraggablePanel({
 }: DraggablePanelProps) {
   const panel = useUIStore((s) => s.panels[id]);
   const setPanelPosition = useUIStore((s) => s.setPanelPosition);
+  const setPanelDock = useUIStore((s) => s.setPanelDock);
   const togglePanel = useUIStore((s) => s.togglePanel);
+  const setHoverDock = useDockDragStore((s) => s.setHover);
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -35,77 +48,112 @@ export default function DraggablePanel({
 
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
-      // Only primary button
       if (e.button !== 0) return;
+      // Avoid starting drag if click target is a button/input inside header
+      const target = e.target as HTMLElement;
+      if (target.closest('button, input, select, textarea, a')) return;
+
       e.preventDefault();
       const rect = panelRef.current?.getBoundingClientRect();
       if (!rect) return;
 
       dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       setIsDragging(true);
+      useDockDragStore.setState({ active: true, hover: 'floating' });
 
       const handleMouseMove = (ev: globalThis.MouseEvent) => {
-        const newX = Math.max(
-          0,
-          Math.min(ev.clientX - dragOffset.current.x, window.innerWidth - 100)
-        );
-        const newY = Math.max(
-          0,
-          Math.min(ev.clientY - dragOffset.current.y, window.innerHeight - 40)
-        );
+        const newX = ev.clientX - dragOffset.current.x;
+        const newY = ev.clientY - dragOffset.current.y;
         setPanelPosition(id, { x: newX, y: newY });
+        const side = detectDockSide(ev.clientX, ev.clientY);
+        setHoverDock(side);
       };
 
-      const handleMouseUp = () => {
+      const handleMouseUp = (ev: globalThis.MouseEvent) => {
         setIsDragging(false);
+        useDockDragStore.setState({ active: false, hover: 'floating' });
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
+
+        const side = detectDockSide(ev.clientX, ev.clientY);
+        if (side !== 'floating') {
+          setPanelDock(id, side);
+        } else {
+          // Clamp into viewport
+          const r = panelRef.current?.getBoundingClientRect();
+          const w = r?.width ?? 200;
+          const h = r?.height ?? 60;
+          const clampedX = Math.max(0, Math.min(ev.clientX - dragOffset.current.x, window.innerWidth - w));
+          const clampedY = Math.max(0, Math.min(ev.clientY - dragOffset.current.y, window.innerHeight - h));
+          setPanelDock(id, 'floating', { x: clampedX, y: clampedY });
+        }
       };
 
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
     },
-    [id, setPanelPosition]
+    [id, setPanelPosition, setPanelDock, setHoverDock]
   );
 
   if (!panel.visible) return null;
 
+  const isFloating = panel.dock === 'floating';
+  const orientation: PanelOrientation =
+    panel.dock === 'left' || panel.dock === 'right' ? 'vertical' : 'horizontal';
+
   return (
+    <PanelOrientationContext.Provider value={orientation}>
     <div
       ref={panelRef}
       className={cn(
-        'absolute z-30 flex flex-col rounded-lg border border-border bg-card shadow-xl pointer-events-none',
-        isDragging && 'opacity-90 shadow-2xl',
+        'flex flex-col rounded-lg border border-border bg-card shadow-xl',
+        isFloating && 'absolute z-30',
+        !isFloating && 'relative',
+        isDragging && 'opacity-90 shadow-2xl ring-2 ring-primary/50',
         className
       )}
-      style={{
-        left: panel.position.x >= 0 ? panel.position.x : undefined,
-        right: panel.position.x < 0 ? Math.abs(panel.position.x) * 8 : undefined,
-        top: panel.position.y,
-        maxHeight: `calc(100vh - ${panel.position.y + 16}px)`,
-      }}
+      style={
+        isFloating
+          ? {
+              left: panel.position.x,
+              top: panel.position.y,
+              maxHeight: `calc(100vh - ${Math.max(panel.position.y, 0) + 16}px)`,
+            }
+          : undefined
+      }
     >
-      {/* Drag handle header */}
+      {/* Drag handle header — full width */}
       <div
+        onMouseDown={handleMouseDown}
         className={cn(
-          'flex h-9 items-center gap-2 rounded-t-lg border-b border-border bg-muted/50 px-2 pointer-events-none',
-          isDragging && 'cursor-grabbing'
+          'flex h-8 items-center gap-2 rounded-t-lg border-b border-border bg-muted/50 px-2 select-none',
+          isDragging ? 'cursor-grabbing' : 'cursor-grab'
         )}
       >
-        <div
-          onMouseDown={handleMouseDown}
-          className={cn('cursor-grab pointer-events-auto', isDragging && 'cursor-grabbing')}
-        >
-          <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-        </div>
-        <span className="flex-1 select-none text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+        <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           {title}
         </span>
-        {headerExtra && <div className="pointer-events-auto">{headerExtra}</div>}
+        {headerExtra}
+        {!isFloating && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setPanelDock(id, 'floating', { x: 80, y: 80 });
+            }}
+            className="rounded p-0.5 hover:bg-muted"
+            title="Desanclar"
+          >
+            <PinOff className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        )}
         {closable && (
           <button
-            onClick={() => togglePanel(id)}
-            className="rounded p-0.5 hover:bg-muted pointer-events-auto"
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePanel(id);
+            }}
+            className="rounded p-0.5 hover:bg-muted"
             title={`Ocultar ${title}`}
           >
             <X className="h-3.5 w-3.5 text-muted-foreground" />
@@ -113,7 +161,8 @@ export default function DraggablePanel({
         )}
       </div>
       {/* Content */}
-      <div className="overflow-auto pointer-events-auto">{children}</div>
+      <div className="overflow-auto">{children}</div>
     </div>
+    </PanelOrientationContext.Provider>
   );
 }

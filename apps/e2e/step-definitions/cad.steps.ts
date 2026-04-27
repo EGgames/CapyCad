@@ -130,3 +130,34 @@ Then('no debería mostrar banner de error del motor CAD', async () => {
     Ensure.that(AppState.cadErrorBannerIsAbsent(), isTrue())
   );
 });
+
+// ── Booleanas ───────────────────────────────────────────────────────────────
+
+Then('debería ver la barra de herramientas booleanas', async () => {
+  await actorCalled('Diseñador').attemptsTo(
+    Wait.upTo(Duration.ofSeconds(10)).until(AppState.booleanToolbarIsPresent(), isTrue()),
+    Ensure.that(AppState.booleanToolbarIsPresent(), isTrue())
+  );
+});
+
+Then('el botón de booleana debería estar presente', async () => {
+  await actorCalled('Diseñador').attemptsTo(
+    Ensure.that(AppState.booleanOpenButtonIsPresent(), isTrue())
+  );
+});
+
+When('el usuario abre el diálogo de booleana', async () => {
+  const { Click } = await import('@serenity-js/web');
+  const { PageElement, By } = await import('@serenity-js/web');
+  await actorCalled('Diseñador').attemptsTo(
+    Wait.upTo(Duration.ofSeconds(30)).until(AppState.initOverlayIsGone(), isTrue()),
+    Click.on(PageElement.located(By.css('[data-testid="boolean-open-btn"]')))
+  );
+});
+
+Then('el diálogo de booleana debería mostrar el mensaje de "no hay extrusiones"', async () => {
+  await actorCalled('Diseñador').attemptsTo(
+    Wait.upTo(Duration.ofSeconds(5)).until(AppState.booleanEmptyMessageIsVisible(), isTrue()),
+    Ensure.that(AppState.booleanEmptyMessageIsVisible(), isTrue())
+  );
+});

@@ -24,6 +24,15 @@ const cadErrorBanner = () =>
 /** Overlay de inicialización bloqueante */
 const initOverlay = () => PageElement.located(By.css('[data-testid="cad-init-overlay"]'));
 
+/** Barra de herramientas booleanas (panel) */
+const toolbarBoolean = () => PageElement.located(By.css('[data-testid="toolbar-boolean"]'));
+
+/** Botón que abre el diálogo de booleana */
+const booleanOpenBtn = () => PageElement.located(By.css('[data-testid="boolean-open-btn"]'));
+
+/** Mensaje "no hay extrusiones" dentro del diálogo de booleana */
+const booleanEmptyMsg = () => PageElement.located(By.css('[data-testid="boolean-empty-msg"]'));
+
 /**
  * Preguntas de Screenplay — estado de la UI de la app CAD.
  */
@@ -89,4 +98,22 @@ export const AppState = {
       const cssClass = await actor.answer(button.attribute('class'));
       return cssClass?.includes('bg-violet') || cssClass?.includes('bg-primary') || false;
     }),
+
+  /** ¿Está presente la barra de booleanas? */
+  booleanToolbarIsPresent: () =>
+    Question.about('la presencia de la barra de booleanas', (actor) =>
+      actor.answer(toolbarBoolean().isPresent())
+    ),
+
+  /** ¿Está presente el botón para abrir el diálogo de booleana? */
+  booleanOpenButtonIsPresent: () =>
+    Question.about('la presencia del botón de booleana', (actor) =>
+      actor.answer(booleanOpenBtn().isPresent())
+    ),
+
+  /** ¿Se muestra el mensaje "no hay extrusiones" en el diálogo de booleana? */
+  booleanEmptyMessageIsVisible: () =>
+    Question.about('el mensaje de booleana sin extrusiones', (actor) =>
+      actor.answer(booleanEmptyMsg().isPresent())
+    ),
 };

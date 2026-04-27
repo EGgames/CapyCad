@@ -82,3 +82,13 @@ Característica: Aplicación CAD — Funcionalidades principales
 
   Escenario: Motor CAD sin banner de error
     Entonces no debería mostrar banner de error del motor CAD
+
+  # ── Booleanas ──────────────────────────────────────────────────────────────
+
+  Escenario: Barra de herramientas booleanas presente
+    Entonces debería ver la barra de herramientas booleanas
+    Y el botón de booleana debería estar presente
+
+  Escenario: Diálogo de booleana se abre y muestra mensaje cuando no hay extrusiones
+    Cuando el usuario abre el diálogo de booleana
+    Entonces el diálogo de booleana debería mostrar el mensaje de "no hay extrusiones"

@@ -1,11 +1,24 @@
 import { useState } from 'react';
-import { LayoutPanelTop, Eye, EyeOff, PanelTop, PanelLeft, PanelRight, Cuboid } from 'lucide-react';
+import {
+  LayoutPanelTop,
+  Eye,
+  EyeOff,
+  PanelTop,
+  PanelLeft,
+  PanelRight,
+  Cuboid,
+  FolderOpen,
+  Combine,
+  RotateCcw,
+} from 'lucide-react';
 import { useUIStore, type PanelId } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
 
 const PANEL_LABELS: Record<PanelId, { label: string; icon: typeof PanelTop }> = {
+  toolbarFile: { label: 'Archivo', icon: FolderOpen },
   toolbar2d: { label: 'Herramientas 2D', icon: PanelTop },
   toolbar3d: { label: 'Herramientas 3D', icon: Cuboid },
+  toolbarBoolean: { label: 'Booleanas', icon: Combine },
   sidebar: { label: 'Feature Tree', icon: PanelLeft },
   properties: { label: 'Propiedades', icon: PanelRight },
 };
@@ -13,6 +26,7 @@ const PANEL_LABELS: Record<PanelId, { label: string; icon: typeof PanelTop }> = 
 export default function PanelToggleMenu() {
   const panels = useUIStore((s) => s.panels);
   const togglePanel = useUIStore((s) => s.togglePanel);
+  const resetLayout = useUIStore((s) => s.resetLayout);
   const [open, setOpen] = useState(false);
 
   return (
@@ -50,6 +64,19 @@ export default function PanelToggleMenu() {
               </button>
             );
           })}
+          <div className="my-1 h-px bg-border" />
+          <button
+            onClick={() => {
+              if (confirm('¿Restaurar la disposición de paneles por defecto?')) {
+                resetLayout();
+                setOpen(false);
+              }
+            }}
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm hover:bg-muted transition-colors"
+          >
+            <RotateCcw className="h-4 w-4 text-muted-foreground" />
+            <span className="flex-1 text-left">Restaurar disposición</span>
+          </button>
         </div>
       )}
     </div>

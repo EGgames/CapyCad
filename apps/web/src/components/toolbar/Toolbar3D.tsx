@@ -6,7 +6,6 @@ import {
   PenTool,
   BoxSelect,
   Route,
-  Combine,
   Grid3x3,
   RefreshCw,
   Slice,
@@ -21,6 +20,7 @@ import { useSketchStore } from '@/stores/sketchStore';
 import { useFeatureStore } from '@/stores/featureStore';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
+import { usePanelOrientation } from '../ui/panelOrientation';
 import {
   ExtrudeDialog,
   RevolveDialog,
@@ -29,7 +29,6 @@ import {
   ShellDialog,
   SweepDialog,
   LoftDialog,
-  BooleanDialog,
   LinearPatternDialog,
   CircularPatternDialog,
   DraftDialog,
@@ -49,7 +48,6 @@ type Tool3DAction =
   | 'chamfer'
   | 'shell'
   | 'sweep'
-  | 'boolean'
   | 'pattern_linear'
   | 'pattern_circular'
   | 'draft'
@@ -70,7 +68,6 @@ export default function Toolbar3D() {
     createChamfer,
     createShell,
     createSweep,
-    createBoolean,
     createLinearPattern,
     createCircularPattern,
     createDraft,
@@ -87,7 +84,6 @@ export default function Toolbar3D() {
     setPlacementRotation,
     cancelPlacement,
     isProcessing,
-    features,
     selectedFeatureId,
   } = useFeatureStore();
   const [activeDialog, setActiveDialog] = useState<Tool3DAction | null>(null);
@@ -204,19 +200,6 @@ export default function Toolbar3D() {
     } catch (error) {
       console.error('Error al crear loft:', error);
       alert('Error al crear loft. Ver consola para detalles.');
-    }
-  };
-
-  const handleBoolean = async (
-    targetId: string,
-    toolId: string,
-    operation: 'union' | 'subtract' | 'intersect'
-  ) => {
-    try {
-      await createBoolean(targetId, toolId, operation);
-    } catch (error) {
-      console.error('Error al aplicar booleana:', error);
-      alert('Error al aplicar operación booleana. Ver consola para detalles.');
     }
   };
 
@@ -378,10 +361,6 @@ export default function Toolbar3D() {
     ) {
       return;
     }
-    if (action === 'boolean' && features.length < 2) {
-      alert('Necesitas al menos 2 features para una operación booleana');
-      return;
-    }
     setActiveDialog(action);
   };
 
@@ -398,7 +377,6 @@ export default function Toolbar3D() {
     { icon: CircleDot, label: 'Fillet', action: 'fillet', needsFeature: true },
     { icon: PenTool, label: 'Chamfer', action: 'chamfer', needsFeature: true },
     { icon: BoxSelect, label: 'Shell', action: 'shell', needsFeature: true },
-    { icon: Combine, label: 'Booleana', action: 'boolean' },
     { icon: Grid3x3, label: 'Patrón Lineal', action: 'pattern_linear', needsFeature: true },
     { icon: RefreshCw, label: 'Patrón Circular', action: 'pattern_circular', needsFeature: true },
     { icon: Slice, label: 'Draft', action: 'draft', needsFeature: true },
@@ -417,16 +395,42 @@ export default function Toolbar3D() {
     { icon: Donut, label: 'Toroide', action: 'primitive_torus' },
   ];
 
+  const orientation = usePanelOrientation();
+  const isVertical = orientation === 'vertical';
+
   return (
-    <div data-testid="toolbar-3d" className="flex items-center px-2 sm:px-4 overflow-x-auto gap-1">
+    <div
+      data-testid="toolbar-3d"
+      className={cn(
+        'gap-1 px-2 sm:px-4',
+        isVertical
+          ? 'flex flex-col items-stretch py-2'
+          : 'flex items-center overflow-x-auto'
+      )}
+    >
       {/* Herramientas 3D */}
-      <div className="flex items-center space-x-1">
-        <span className="mr-2 text-xs font-medium text-muted-foreground">3D:</span>
+      <div
+        className={cn(
+          isVertical
+            ? 'flex flex-col items-stretch space-y-1'
+            : 'flex items-center space-x-1'
+        )}
+      >
+        <span
+          className={cn(
+            'text-xs font-medium text-muted-foreground',
+            isVertical ? 'mb-1' : 'mr-2'
+          )}
+        >
+          3D:
+        </span>
         {tools3D.map((tool) => (
           <button
             key={tool.action}
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-md',
+              isVertical
+                ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
+                : 'flex h-9 w-9 items-center justify-center rounded-md',
               isProcessing
                 ? 'cursor-wait opacity-50'
                 : tool.needsFeature && !selectedFeatureId
@@ -438,21 +442,41 @@ export default function Toolbar3D() {
             disabled={isProcessing}
           >
             <tool.icon className="h-4 w-4" />
+            {isVertical && <span className="text-sm">{tool.label}</span>}
           </button>
         ))}
       </div>
 
       {/* Separador */}
-      <div className="mx-4 h-8 w-px bg-border" />
+      <div
+        className={cn(
+          isVertical ? 'my-2 h-px w-full bg-border' : 'mx-4 h-8 w-px bg-border'
+        )}
+      />
 
       {/* Primitivas 3D */}
-      <div className="flex items-center space-x-1">
-        <span className="mr-2 text-xs font-medium text-muted-foreground">Figuras:</span>
+      <div
+        className={cn(
+          isVertical
+            ? 'flex flex-col items-stretch space-y-1'
+            : 'flex items-center space-x-1'
+        )}
+      >
+        <span
+          className={cn(
+            'text-xs font-medium text-muted-foreground',
+            isVertical ? 'mb-1' : 'mr-2'
+          )}
+        >
+          Figuras:
+        </span>
         {toolsPrimitives.map((tool) => (
           <button
             key={tool.action}
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-md',
+              isVertical
+                ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
+                : 'flex h-9 w-9 items-center justify-center rounded-md',
               isProcessing ? 'cursor-wait opacity-50' : 'hover:bg-muted'
             )}
             title={tool.label}
@@ -460,6 +484,7 @@ export default function Toolbar3D() {
             disabled={isProcessing}
           >
             <tool.icon className="h-4 w-4" />
+            {isVertical && <span className="text-sm">{tool.label}</span>}
           </button>
         ))}
       </div>
@@ -499,12 +524,6 @@ export default function Toolbar3D() {
         open={activeDialog === 'loft'}
         onClose={() => setActiveDialog(null)}
         onApply={handleLoft}
-      />
-      <BooleanDialog
-        open={activeDialog === 'boolean'}
-        onClose={() => setActiveDialog(null)}
-        onApply={handleBoolean}
-        featureNames={features.map((f) => ({ id: f.id, name: f.name }))}
       />
       <LinearPatternDialog
         open={activeDialog === 'pattern_linear'}
