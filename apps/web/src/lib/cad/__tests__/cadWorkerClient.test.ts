@@ -309,7 +309,7 @@ describe('CADWorkerClient - Error Handling', () => {
 
     const errClient = new CADWorkerClient();
     await errClient.initialize();
-    await expect(errClient.fillet([], 10, 'positive', 999)).rejects.toThrow(
+    await expect(errClient.fillet({ kind: 'extrude', entities: [], distance: 10, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 999)).rejects.toThrow(
       'Fillet radius too large'
     );
     errClient.terminate();
@@ -343,7 +343,7 @@ describe('CADWorkerClient - Error Handling', () => {
 
     const errClient = new CADWorkerClient();
     await errClient.initialize();
-    await expect(errClient.chamfer([], 10, 'positive', 999)).rejects.toThrow(
+    await expect(errClient.chamfer({ kind: 'extrude', entities: [], distance: 10, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 999)).rejects.toThrow(
       'Chamfer distance too large'
     );
     errClient.terminate();
@@ -395,7 +395,7 @@ describe('CADWorkerClient - Operación de Fillet', () => {
   });
 
   it('debe ejecutar fillet exitosamente y retornar geometría', async () => {
-    const geometry = await client.fillet(SQUARE_ENTITIES, 20, 'positive', 1.5);
+    const geometry = await client.fillet({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 1.5);
 
     expect(geometry).toBeDefined();
     expect(geometry.positions).toBeInstanceOf(Float32Array);
@@ -406,17 +406,17 @@ describe('CADWorkerClient - Operación de Fillet', () => {
 
   it('debe lanzar error si no está inicializado', async () => {
     const uninit = new CADWorkerClient();
-    await expect(uninit.fillet(SQUARE_ENTITIES, 20, 'positive', 1.5)).rejects.toThrow(
+    await expect(uninit.fillet({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 1.5)).rejects.toThrow(
       'CAD Worker not initialized'
     );
     uninit.terminate();
   });
 
   it('debe rechazar radio de fillet <= 0', async () => {
-    await expect(client.fillet(SQUARE_ENTITIES, 20, 'positive', 0)).rejects.toThrow(
+    await expect(client.fillet({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 0)).rejects.toThrow(
       'Fillet radius must be greater than 0'
     );
-    await expect(client.fillet(SQUARE_ENTITIES, 20, 'positive', -1)).rejects.toThrow(
+    await expect(client.fillet({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, -1)).rejects.toThrow(
       'Fillet radius must be greater than 0'
     );
   });
@@ -429,15 +429,14 @@ describe('CADWorkerClient - Operación de Fillet', () => {
       originalPostMessage(data);
     };
 
-    await client.fillet(SQUARE_ENTITIES, 20, 'positive', 2.0);
+    await client.fillet({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 2.0);
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'fillet',
         payload: expect.objectContaining({
-          entities: SQUARE_ENTITIES,
-          extrudeDistance: 20,
-          direction: 'positive',
+          source: expect.objectContaining({ kind: 'extrude', entities: SQUARE_ENTITIES }),
+          sourceTranslation: { x: 0, y: 0, z: 0 },
           radius: 2.0,
         }),
       })
@@ -490,7 +489,7 @@ describe('CADWorkerClient - Operación de Chamfer', () => {
   });
 
   it('debe ejecutar chamfer exitosamente y retornar geometría', async () => {
-    const geometry = await client.chamfer(SQUARE_ENTITIES, 20, 'positive', 1.5);
+    const geometry = await client.chamfer({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 1.5);
 
     expect(geometry).toBeDefined();
     expect(geometry.positions).toBeInstanceOf(Float32Array);
@@ -501,17 +500,17 @@ describe('CADWorkerClient - Operación de Chamfer', () => {
 
   it('debe lanzar error si no está inicializado', async () => {
     const uninit = new CADWorkerClient();
-    await expect(uninit.chamfer(SQUARE_ENTITIES, 20, 'positive', 1.5)).rejects.toThrow(
+    await expect(uninit.chamfer({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 1.5)).rejects.toThrow(
       'CAD Worker not initialized'
     );
     uninit.terminate();
   });
 
   it('debe rechazar distancia de chamfer <= 0', async () => {
-    await expect(client.chamfer(SQUARE_ENTITIES, 20, 'positive', 0)).rejects.toThrow(
+    await expect(client.chamfer({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 0)).rejects.toThrow(
       'Chamfer distance must be greater than 0'
     );
-    await expect(client.chamfer(SQUARE_ENTITIES, 20, 'positive', -1)).rejects.toThrow(
+    await expect(client.chamfer({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, -1)).rejects.toThrow(
       'Chamfer distance must be greater than 0'
     );
   });
@@ -524,15 +523,14 @@ describe('CADWorkerClient - Operación de Chamfer', () => {
       originalPostMessage(data);
     };
 
-    await client.chamfer(SQUARE_ENTITIES, 20, 'positive', 2.0);
+    await client.chamfer({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 2.0);
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'chamfer',
         payload: expect.objectContaining({
-          entities: SQUARE_ENTITIES,
-          extrudeDistance: 20,
-          direction: 'positive',
+          source: expect.objectContaining({ kind: 'extrude', entities: SQUARE_ENTITIES }),
+          sourceTranslation: { x: 0, y: 0, z: 0 },
           chamferDistance: 2.0,
         }),
       })
@@ -587,7 +585,7 @@ describe('CADWorkerClient - Operación de Shell', () => {
   });
 
   it('debe ejecutar shell exitosamente y retornar geometría', async () => {
-    const geometry = await client.shell(SQUARE_ENTITIES, 20, 'positive', 2);
+    const geometry = await client.shell({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 2);
 
     expect(geometry).toBeDefined();
     expect(geometry.positions).toBeInstanceOf(Float32Array);
@@ -598,17 +596,17 @@ describe('CADWorkerClient - Operación de Shell', () => {
 
   it('debe lanzar error si no está inicializado', async () => {
     const uninit = new CADWorkerClient();
-    await expect(uninit.shell(SQUARE_ENTITIES, 20, 'positive', 2)).rejects.toThrow(
+    await expect(uninit.shell({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 2)).rejects.toThrow(
       'CAD Worker not initialized'
     );
     uninit.terminate();
   });
 
   it('debe rechazar thickness <= 0', async () => {
-    await expect(client.shell(SQUARE_ENTITIES, 20, 'positive', 0)).rejects.toThrow(
+    await expect(client.shell({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 0)).rejects.toThrow(
       'Shell thickness must be greater than 0'
     );
-    await expect(client.shell(SQUARE_ENTITIES, 20, 'positive', -1)).rejects.toThrow(
+    await expect(client.shell({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, -1)).rejects.toThrow(
       'Shell thickness must be greater than 0'
     );
   });
@@ -621,15 +619,14 @@ describe('CADWorkerClient - Operación de Shell', () => {
       originalPostMessage(data);
     };
 
-    await client.shell(SQUARE_ENTITIES, 20, 'positive', 2);
+    await client.shell({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 2);
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'shell',
         payload: expect.objectContaining({
-          entities: SQUARE_ENTITIES,
-          extrudeDistance: 20,
-          direction: 'positive',
+          source: expect.objectContaining({ kind: 'extrude', entities: SQUARE_ENTITIES }),
+          sourceTranslation: { x: 0, y: 0, z: 0 },
           thickness: 2,
         }),
       })
@@ -664,7 +661,7 @@ describe('CADWorkerClient - Operación de Shell', () => {
 
     const errClient = new CADWorkerClient();
     await errClient.initialize();
-    await expect(errClient.shell(SQUARE_ENTITIES, 20, 'positive', 999)).rejects.toThrow(
+    await expect(errClient.shell({ kind: 'extrude', entities: SQUARE_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 999)).rejects.toThrow(
       'Shell thickness too large'
     );
     errClient.terminate();
@@ -1044,18 +1041,10 @@ describe('CADWorkerClient - Operación de Boolean', () => {
 
   it('debe ejecutar union exitosamente y retornar geometría', async () => {
     const geometry = await client.booleanOp(
-      RECT_ENTITIES,
-      10,
-      'positive',
+      { kind: 'extrude', entities: RECT_ENTITIES, distance: 10, direction: 'positive', canvasWidth: 800, canvasHeight: 600 },
       { x: 0, y: 0, z: 0 },
-      800,
-      600,
-      RECT_ENTITIES,
-      5,
-      'positive',
+      { kind: 'extrude', entities: RECT_ENTITIES, distance: 5, direction: 'positive', canvasWidth: 800, canvasHeight: 600 },
       { x: 0, y: 0, z: 0 },
-      800,
-      600,
       'union'
     );
 
@@ -1068,18 +1057,10 @@ describe('CADWorkerClient - Operación de Boolean', () => {
 
   it('debe ejecutar resta exitosamente', async () => {
     const geometry = await client.booleanOp(
-      RECT_ENTITIES,
-      10,
-      'positive',
+      { kind: 'extrude', entities: RECT_ENTITIES, distance: 10, direction: 'positive', canvasWidth: 800, canvasHeight: 600 },
       { x: 0, y: 0, z: 0 },
-      800,
-      600,
-      RECT_ENTITIES,
-      5,
-      'both',
+      { kind: 'extrude', entities: RECT_ENTITIES, distance: 5, direction: 'both', canvasWidth: 800, canvasHeight: 600 },
       { x: 0, y: 0, z: 0 },
-      800,
-      600,
       'subtract'
     );
     expect(geometry).toBeDefined();
@@ -1087,18 +1068,10 @@ describe('CADWorkerClient - Operación de Boolean', () => {
 
   it('debe ejecutar intersección exitosamente', async () => {
     const geometry = await client.booleanOp(
-      RECT_ENTITIES,
-      10,
-      'negative',
+      { kind: 'extrude', entities: RECT_ENTITIES, distance: 10, direction: 'negative', canvasWidth: 800, canvasHeight: 600 },
       { x: 0, y: 0, z: 0 },
-      800,
-      600,
-      RECT_ENTITIES,
-      10,
-      'negative',
+      { kind: 'extrude', entities: RECT_ENTITIES, distance: 10, direction: 'negative', canvasWidth: 800, canvasHeight: 600 },
       { x: 0, y: 0, z: 0 },
-      800,
-      600,
       'intersect'
     );
     expect(geometry).toBeDefined();
@@ -1107,7 +1080,7 @@ describe('CADWorkerClient - Operación de Boolean', () => {
   it('debe lanzar error si no está inicializado', async () => {
     const uninit = new CADWorkerClient();
     await expect(
-      uninit.booleanOp(RECT_ENTITIES, 10, 'positive', { x: 0, y: 0, z: 0 }, 800, 600, RECT_ENTITIES, 5, 'positive', { x: 0, y: 0, z: 0 }, 800, 600, 'union')
+      uninit.booleanOp({ kind: 'extrude', entities: RECT_ENTITIES, distance: 10, direction: 'positive', canvasWidth: 800, canvasHeight: 600 }, { x: 0, y: 0, z: 0 }, { kind: 'extrude', entities: RECT_ENTITIES, distance: 5, direction: 'positive', canvasWidth: 800, canvasHeight: 600 }, { x: 0, y: 0, z: 0 }, 'union')
     ).rejects.toThrow('CAD Worker not initialized');
     uninit.terminate();
   });
@@ -1120,19 +1093,22 @@ describe('CADWorkerClient - Operación de Boolean', () => {
       originalPostMessage(data);
     };
 
-    await client.booleanOp(RECT_ENTITIES, 10, 'positive', { x: 1, y: 0, z: 0 }, 800, 600, RECT_ENTITIES, 5, 'both', { x: 0, y: 0, z: 0 }, 800, 600, 'subtract');
+    await client.booleanOp(
+      { kind: 'extrude', entities: RECT_ENTITIES, distance: 10, direction: 'positive', canvasWidth: 800, canvasHeight: 600 },
+      { x: 1, y: 0, z: 0 },
+      { kind: 'extrude', entities: RECT_ENTITIES, distance: 5, direction: 'both', canvasWidth: 800, canvasHeight: 600 },
+      { x: 0, y: 0, z: 0 },
+      'subtract'
+    );
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'boolean',
         payload: expect.objectContaining({
-          targetEntities: RECT_ENTITIES,
-          targetDistance: 10,
-          targetDirection: 'positive',
+          target: expect.objectContaining({ kind: 'extrude', entities: RECT_ENTITIES, distance: 10, direction: 'positive' }),
           targetTranslation: { x: 1, y: 0, z: 0 },
-          toolEntities: RECT_ENTITIES,
-          toolDistance: 5,
-          toolDirection: 'both',
+          tool: expect.objectContaining({ kind: 'extrude', entities: RECT_ENTITIES, distance: 5, direction: 'both' }),
+          toolTranslation: { x: 0, y: 0, z: 0 },
           operation: 'subtract',
         }),
       })
@@ -1170,7 +1146,7 @@ describe('CADWorkerClient - Operación de Boolean', () => {
     const errClient = new CADWorkerClient();
     await errClient.initialize();
     await expect(
-      errClient.booleanOp(RECT_ENTITIES, 10, 'positive', { x: 0, y: 0, z: 0 }, 800, 600, RECT_ENTITIES, 5, 'positive', { x: 0, y: 0, z: 0 }, 800, 600, 'union')
+      errClient.booleanOp({ kind: 'extrude', entities: RECT_ENTITIES, distance: 10, direction: 'positive', canvasWidth: 800, canvasHeight: 600 }, { x: 0, y: 0, z: 0 }, { kind: 'extrude', entities: RECT_ENTITIES, distance: 5, direction: 'positive', canvasWidth: 800, canvasHeight: 600 }, { x: 0, y: 0, z: 0 }, 'union')
     ).rejects.toThrow('Boolean operation failed on empty body');
     errClient.terminate();
   });
@@ -1202,7 +1178,7 @@ describe('CADWorkerClient - Operación de Draft', () => {
   });
 
   it('debe ejecutar draft exitosamente y retornar geometría', async () => {
-    const result = await client.draft(RECT_ENTITIES, 20, 'positive', 10, 'XY');
+    const result = await client.draft({ kind: 'extrude', entities: RECT_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 10, 'XY');
     expect(result).toBeDefined();
     expect(result.positions).toBeInstanceOf(Float32Array);
     expect(result.normals).toBeInstanceOf(Float32Array);
@@ -1211,20 +1187,20 @@ describe('CADWorkerClient - Operación de Draft', () => {
 
   it('debe lanzar error si no está inicializado', async () => {
     const freshClient = new CADWorkerClient();
-    await expect(freshClient.draft(RECT_ENTITIES, 20, 'positive', 10, 'XY')).rejects.toThrow(
+    await expect(freshClient.draft({ kind: 'extrude', entities: RECT_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 10, 'XY')).rejects.toThrow(
       'CAD Worker not initialized'
     );
     freshClient.terminate();
   });
 
   it('debe rechazar ángulo > 30', async () => {
-    await expect(client.draft(RECT_ENTITIES, 20, 'positive', 45, 'XY')).rejects.toThrow(
+    await expect(client.draft({ kind: 'extrude', entities: RECT_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 45, 'XY')).rejects.toThrow(
       'Draft angle must be between -30 and 30'
     );
   });
 
   it('debe rechazar ángulo < -30', async () => {
-    await expect(client.draft(RECT_ENTITIES, 20, 'positive', -31, 'XY')).rejects.toThrow(
+    await expect(client.draft({ kind: 'extrude', entities: RECT_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, -31, 'XY')).rejects.toThrow(
       'Draft angle must be between -30 and 30'
     );
   });
@@ -1237,15 +1213,14 @@ describe('CADWorkerClient - Operación de Draft', () => {
       originalPostMessage.call(this, data);
     };
 
-    await client.draft(RECT_ENTITIES, 20, 'positive', 5, 'XZ');
+    await client.draft({ kind: 'extrude', entities: RECT_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 5, 'XZ');
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'draft',
         payload: expect.objectContaining({
-          entities: RECT_ENTITIES,
-          extrudeDistance: 20,
-          direction: 'positive',
+          source: expect.objectContaining({ kind: 'extrude', entities: RECT_ENTITIES }),
+          sourceTranslation: { x: 0, y: 0, z: 0 },
           angle: 5,
           neutralPlane: 'XZ',
         }),
@@ -1285,7 +1260,7 @@ describe('CADWorkerClient - Operación de Draft', () => {
 
     const errClient = new CADWorkerClient();
     await errClient.initialize();
-    await expect(errClient.draft(RECT_ENTITIES, 20, 'positive', 10, 'XY')).rejects.toThrow(
+    await expect(errClient.draft({ kind: 'extrude', entities: RECT_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 10, 'XY')).rejects.toThrow(
       'Draft failed on thin body'
     );
     errClient.terminate();
@@ -1318,7 +1293,7 @@ describe('CADWorkerClient - Operación de Offset', () => {
   });
 
   it('debe ejecutar offset exitosamente y retornar geometría', async () => {
-    const result = await client.offset(RECT_ENTITIES, 20, 'positive', 3);
+    const result = await client.offset({ kind: 'extrude', entities: RECT_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 3);
     expect(result).toBeDefined();
     expect(result.positions).toBeInstanceOf(Float32Array);
     expect(result.normals).toBeInstanceOf(Float32Array);
@@ -1327,7 +1302,7 @@ describe('CADWorkerClient - Operación de Offset', () => {
 
   it('debe lanzar error si no está inicializado', async () => {
     const freshClient = new CADWorkerClient();
-    await expect(freshClient.offset(RECT_ENTITIES, 20, 'positive', 3)).rejects.toThrow(
+    await expect(freshClient.offset({ kind: 'extrude', entities: RECT_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 3)).rejects.toThrow(
       'CAD Worker not initialized'
     );
     freshClient.terminate();
@@ -1341,15 +1316,14 @@ describe('CADWorkerClient - Operación de Offset', () => {
       originalPostMessage.call(this, data);
     };
 
-    await client.offset(RECT_ENTITIES, 20, 'positive', 5);
+    await client.offset({ kind: 'extrude', entities: RECT_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 5);
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'offset',
         payload: expect.objectContaining({
-          entities: RECT_ENTITIES,
-          extrudeDistance: 20,
-          direction: 'positive',
+          source: expect.objectContaining({ kind: 'extrude', entities: RECT_ENTITIES }),
+          sourceTranslation: { x: 0, y: 0, z: 0 },
           offsetDistance: 5,
         }),
       })
@@ -1388,7 +1362,7 @@ describe('CADWorkerClient - Operación de Offset', () => {
 
     const errClient = new CADWorkerClient();
     await errClient.initialize();
-    await expect(errClient.offset(RECT_ENTITIES, 20, 'positive', 3)).rejects.toThrow(
+    await expect(errClient.offset({ kind: 'extrude', entities: RECT_ENTITIES, distance: 20, direction: 'positive' }, { x: 0, y: 0, z: 0 }, 3)).rejects.toThrow(
       'Offset operation failed'
     );
     errClient.terminate();

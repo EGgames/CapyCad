@@ -543,7 +543,7 @@ describe('featureStore', () => {
       const { createBoolean } = useFeatureStore.getState();
 
       await expect(createBoolean('nonexistent', 'ext-2', 'union')).rejects.toThrow(
-        'Target extrude feature not found'
+        'Target solid feature not found'
       );
     });
 
@@ -551,7 +551,7 @@ describe('featureStore', () => {
       const { createBoolean } = useFeatureStore.getState();
 
       await expect(createBoolean('ext-1', 'nonexistent', 'union')).rejects.toThrow(
-        'Tool extrude feature not found'
+        'Tool solid feature not found'
       );
     });
 
@@ -634,7 +634,7 @@ describe('featureStore', () => {
       const { createDraft } = useFeatureStore.getState();
 
       await expect(createDraft('nonexistent', 5)).rejects.toThrow(
-        'Source extrude feature not found'
+        'Source solid feature not found'
       );
     });
 
@@ -681,7 +681,7 @@ describe('featureStore', () => {
     it('createFillet_whenSourceNotFound_thenThrows', async () => {
       const { createFillet } = useFeatureStore.getState();
       await expect(createFillet('nonexistent', 3)).rejects.toThrow(
-        'Source extrude feature not found'
+        'Source solid feature not found'
       );
     });
 
@@ -724,7 +724,7 @@ describe('featureStore', () => {
     it('createChamfer_whenSourceNotFound_thenThrows', async () => {
       const { createChamfer } = useFeatureStore.getState();
       await expect(createChamfer('nonexistent', 2)).rejects.toThrow(
-        'Source extrude feature not found'
+        'Source solid feature not found'
       );
     });
 
@@ -767,7 +767,7 @@ describe('featureStore', () => {
     it('createShell_whenSourceNotFound_thenThrows', async () => {
       const { createShell } = useFeatureStore.getState();
       await expect(createShell('nonexistent', 1.5)).rejects.toThrow(
-        'Source extrude feature not found'
+        'Source solid feature not found'
       );
     });
 
@@ -909,7 +909,7 @@ describe('featureStore', () => {
     it('createOffset_whenSourceNotFound_thenThrows', async () => {
       const { createOffset } = useFeatureStore.getState();
       await expect(createOffset('nonexistent', 5)).rejects.toThrow(
-        'Source extrude feature not found'
+        'Source solid feature not found'
       );
     });
 

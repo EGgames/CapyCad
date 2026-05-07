@@ -122,6 +122,8 @@ export interface BooleanFeature extends Feature {
   operation: 'union' | 'subtract' | 'intersect';
   targetId: EntityId;
   toolId: EntityId;
+  /** Centro de la bounding-box calculado en la creación (antes de cualquier movimiento del usuario) */
+  geometryCenter?: Vector3;
 }
 
 /**

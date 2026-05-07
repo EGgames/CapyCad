@@ -94,8 +94,8 @@ describe('ToolbarBoolean — integración', () => {
     expect(unionBtn).toBeInTheDocument();
     expect(subtractBtn).toBeInTheDocument();
     expect(intersectBtn).toBeInTheDocument();
-    // Con 0 extrusiones, el title advierte que se necesitan al menos 2
-    expect(unionBtn.title).toMatch(/al menos 2 extrusiones/i);
+    // Con 0 sólidos, el title advierte que se necesitan al menos 2
+    expect(unionBtn.title).toMatch(/al menos 2 sólidos/i);
   });
 
   it('booleanDialog_whenOpenedWithoutExtrudes_thenShowsEmptyMessage', () => {
@@ -108,7 +108,7 @@ describe('ToolbarBoolean — integración', () => {
     expect(wizard?.step).toBe('select-target');
   });
 
-  it('booleanDialog_whenOnlyPrimitivesExist_thenStillShowsEmptyMessage', () => {
+  it('booleanDialog_whenOnlyPrimitivesExist_thenButtonIsEnabled', () => {
     const { addFeature } = useFeatureStore.getState();
     act(() => {
       addFeature(mkBox('box-1'), new BufferGeometry());
@@ -116,9 +116,9 @@ describe('ToolbarBoolean — integración', () => {
     });
 
     render(<ToolbarBoolean />);
-    // Primitives don't count → canRun still false → title still warns
+    // Primitives NOW count as solid features → canRun is true → title shows the operation title
     const unionBtn = screen.getByTestId('boolean-union-btn') as HTMLButtonElement;
-    expect(unionBtn.title).toMatch(/al menos 2 extrusiones/i);
+    expect(unionBtn.title).not.toMatch(/al menos 2 sólidos/i);
   });
 
   it('booleanDialog_whenTwoExtrudesAdded_thenApplyTriggersCreateBoolean', async () => {
@@ -132,7 +132,7 @@ describe('ToolbarBoolean — integración', () => {
 
     // With 2 extrudes, the button title should NOT warn about needing 2
     const unionBtn = screen.getByTestId('boolean-union-btn') as HTMLButtonElement;
-    expect(unionBtn.title).not.toMatch(/al menos 2 extrusiones/i);
+    expect(unionBtn.title).not.toMatch(/al menos 2 sólidos/i);
 
     // Clicking starts the wizard
     fireEvent.click(unionBtn);

@@ -36,6 +36,109 @@ import type {
 } from '@stl-model/shared-types';
 import type { BufferGeometry } from 'three';
 import type { FeatureMaterial } from '@/lib/materials/materialPresets';
+import type { BooleanShapeDescriptor } from '@/lib/cad/cadWorkerClient';
+
+// ─── Tipos de sólidos válidos para operaciones booleanas y modificadores ─────
+
+/** Todos los tipos de feature que producen un sólido (incluye booleanas encadenadas) */
+export const SOLID_FEATURE_TYPES = [
+  FeatureType.EXTRUDE,
+  FeatureType.PRIMITIVE_BOX,
+  FeatureType.PRIMITIVE_SPHERE,
+  FeatureType.PRIMITIVE_CYLINDER,
+  FeatureType.PRIMITIVE_CONE,
+  FeatureType.PRIMITIVE_TORUS,
+  FeatureType.BOOLEAN,
+] as const;
+
+// ─── Helpers module-level para descriptor + traslación ───────────────────────
+
+/**
+ * Convierte cualquier feature sólida a un BooleanShapeDescriptor (recursivo para BooleanFeature).
+ * El descriptor describe cómo reconstruir la forma en espacio OCC Z-up.
+ */
+function featureToDescriptor(
+  feature: Feature,
+  allFeatures: Feature[],
+  defaultCW: number,
+  defaultCH: number
+): BooleanShapeDescriptor {
+  switch (feature.type) {
+    case FeatureType.EXTRUDE: {
+      const ef = feature as ExtrudeFeature;
+      return {
+        kind: 'extrude',
+        entities: ef.sketch.entities,
+        distance: ef.distance,
+        direction: ef.direction,
+        canvasWidth: ef.sketchCanvasWidth ?? defaultCW,
+        canvasHeight: ef.sketchCanvasHeight ?? defaultCH,
+      };
+    }
+    case FeatureType.PRIMITIVE_BOX: {
+      const bf = feature as BoxFeature;
+      return { kind: 'box', width: bf.width, height: bf.height, depth: bf.depth };
+    }
+    case FeatureType.PRIMITIVE_SPHERE: {
+      const sf = feature as SphereFeature;
+      return { kind: 'sphere', radius: sf.radius };
+    }
+    case FeatureType.PRIMITIVE_CYLINDER: {
+      const cf = feature as CylinderFeature;
+      return { kind: 'cylinder', radius: cf.radius, height: cf.height };
+    }
+    case FeatureType.PRIMITIVE_CONE: {
+      const cf = feature as ConeFeature;
+      return { kind: 'cone', baseRadius: cf.baseRadius, topRadius: cf.topRadius, height: cf.height };
+    }
+    case FeatureType.PRIMITIVE_TORUS: {
+      const tf = feature as TorusFeature;
+      return { kind: 'torus', majorRadius: tf.majorRadius, minorRadius: tf.minorRadius };
+    }
+    case FeatureType.BOOLEAN: {
+      const bf = feature as BooleanFeature;
+      const zero = { x: 0, y: 0, z: 0 };
+      const targetF = allFeatures.find((f) => f.id === bf.targetId);
+      const toolF = allFeatures.find((f) => f.id === bf.toolId);
+      if (!targetF || !toolF) throw new Error(`[Boolean] Operands not found for boolean feature ${feature.id}`);
+      const targetGC = (targetF as ExtrudeFeature).geometryCenter ?? zero;
+      const toolGC = (toolF as ExtrudeFeature).geometryCenter ?? zero;
+      const targetPos = targetF.position ?? targetGC;
+      const toolPos = toolF.position ?? toolGC;
+      return {
+        kind: 'boolean',
+        target: featureToDescriptor(targetF, allFeatures, defaultCW, defaultCH),
+        targetTranslation: { x: targetPos.x - targetGC.x, y: targetPos.y - targetGC.y, z: targetPos.z - targetGC.z },
+        tool: featureToDescriptor(toolF, allFeatures, defaultCW, defaultCH),
+        toolTranslation: { x: toolPos.x - toolGC.x, y: toolPos.y - toolGC.y, z: toolPos.z - toolGC.z },
+        operation: bf.operation,
+      };
+    }
+    default:
+      throw new Error(`[featureToDescriptor] Tipo no soportado: ${feature.type}`);
+  }
+}
+
+/**
+ * Calcula la traslación a aplicar a un sólido en OCC, como delta entre su
+ * posición actual (gizmo) y su centro natural de geometría.
+ */
+function getFeatureTranslation(feature: Feature): { x: number; y: number; z: number } {
+  const zero = { x: 0, y: 0, z: 0 };
+  if (feature.type === FeatureType.BOOLEAN) {
+    // El BooleanFeature ya tiene la traslación embebida en su descriptor recursivo.
+    // El offset externo es: posición actual − geomCenter guardado.
+    const bf = feature as BooleanFeature;
+    const gc = bf.geometryCenter ?? zero;
+    const pos = bf.position ?? gc;
+    return { x: pos.x - gc.x, y: pos.y - gc.y, z: pos.z - gc.z };
+  }
+  const gc = (feature as ExtrudeFeature).geometryCenter ?? zero;
+  const pos = feature.position ?? gc;
+  return { x: pos.x - gc.x, y: pos.y - gc.y, z: pos.z - gc.z };
+}
+
+
 
 /**
  * Geometría 3D resultante de una feature
@@ -489,10 +592,10 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
     const { features } = get();
 
     const sourceFeature = features.find(
-      (f): f is ExtrudeFeature => f.id === sourceFeatureId && f.type === FeatureType.EXTRUDE
+      (f) => f.id === sourceFeatureId && (SOLID_FEATURE_TYPES as readonly string[]).includes(f.type)
     );
     if (!sourceFeature) {
-      throw new Error(`Source extrude feature not found: ${sourceFeatureId}`);
+      throw new Error(`Source solid feature not found: ${sourceFeatureId}`);
     }
 
     try {
@@ -505,12 +608,11 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       await worker.initialize();
       set({ processingProgress: 50 });
 
-      const geometryData = await worker.fillet(
-        sourceFeature.sketch.entities,
-        sourceFeature.distance,
-        sourceFeature.direction,
-        radius
-      );
+      const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
+      const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
+      const sourceTranslation = getFeatureTranslation(sourceFeature);
+
+      const geometryData = await worker.fillet(sourceDesc, sourceTranslation, radius);
 
       set({ processingProgress: 80 });
 
@@ -553,10 +655,10 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
     const { features } = get();
 
     const sourceFeature = features.find(
-      (f): f is ExtrudeFeature => f.id === sourceFeatureId && f.type === FeatureType.EXTRUDE
+      (f) => f.id === sourceFeatureId && (SOLID_FEATURE_TYPES as readonly string[]).includes(f.type)
     );
     if (!sourceFeature) {
-      throw new Error(`Source extrude feature not found: ${sourceFeatureId}`);
+      throw new Error(`Source solid feature not found: ${sourceFeatureId}`);
     }
 
     try {
@@ -569,12 +671,11 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       await worker.initialize();
       set({ processingProgress: 50 });
 
-      const geometryData = await worker.chamfer(
-        sourceFeature.sketch.entities,
-        sourceFeature.distance,
-        sourceFeature.direction,
-        chamferDistance
-      );
+      const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
+      const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
+      const sourceTranslation = getFeatureTranslation(sourceFeature);
+
+      const geometryData = await worker.chamfer(sourceDesc, sourceTranslation, chamferDistance);
 
       set({ processingProgress: 80 });
 
@@ -617,10 +718,10 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
     const { features } = get();
 
     const sourceFeature = features.find(
-      (f): f is ExtrudeFeature => f.id === sourceFeatureId && f.type === FeatureType.EXTRUDE
+      (f) => f.id === sourceFeatureId && (SOLID_FEATURE_TYPES as readonly string[]).includes(f.type)
     );
     if (!sourceFeature) {
-      throw new Error(`Source extrude feature not found: ${sourceFeatureId}`);
+      throw new Error(`Source solid feature not found: ${sourceFeatureId}`);
     }
 
     try {
@@ -633,12 +734,11 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       await worker.initialize();
       set({ processingProgress: 50 });
 
-      const geometryData = await worker.shell(
-        sourceFeature.sketch.entities,
-        sourceFeature.distance,
-        sourceFeature.direction,
-        thickness
-      );
+      const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
+      const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
+      const sourceTranslation = getFeatureTranslation(sourceFeature);
+
+      const geometryData = await worker.shell(sourceDesc, sourceTranslation, thickness);
 
       set({ processingProgress: 80 });
 
@@ -932,17 +1032,17 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
     const { features } = get();
 
     const targetFeature = features.find(
-      (f): f is ExtrudeFeature => f.id === targetFeatureId && f.type === FeatureType.EXTRUDE
+      (f) => f.id === targetFeatureId && (SOLID_FEATURE_TYPES as readonly string[]).includes(f.type)
     );
     if (!targetFeature) {
-      throw new Error(`Target extrude feature not found: ${targetFeatureId}`);
+      throw new Error(`Target solid feature not found: ${targetFeatureId}`);
     }
 
     const toolFeature = features.find(
-      (f): f is ExtrudeFeature => f.id === toolFeatureId && f.type === FeatureType.EXTRUDE
+      (f) => f.id === toolFeatureId && (SOLID_FEATURE_TYPES as readonly string[]).includes(f.type)
     );
     if (!toolFeature) {
-      throw new Error(`Tool extrude feature not found: ${toolFeatureId}`);
+      throw new Error(`Tool solid feature not found: ${toolFeatureId}`);
     }
 
     try {
@@ -955,44 +1055,16 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       await worker.initialize();
       set({ processingProgress: 50 });
 
-      // Calcular traslaciones: delta entre posición actual y centro natural de la geometría.
-      // Si el usuario movió la figura con el gizmo, feature.position ≠ geometryCenter.
-      const zero = { x: 0, y: 0, z: 0 };
-      const targetGC = targetFeature.geometryCenter ?? zero;
-      const toolGC = toolFeature.geometryCenter ?? zero;
-      const targetPos = targetFeature.position ?? targetGC;
-      const toolPos = toolFeature.position ?? toolGC;
-
-      const targetTranslation = {
-        x: targetPos.x - targetGC.x,
-        y: targetPos.y - targetGC.y,
-        z: targetPos.z - targetGC.z,
-      };
-      const toolTranslation = {
-        x: toolPos.x - toolGC.x,
-        y: toolPos.y - toolGC.y,
-        z: toolPos.z - toolGC.z,
-      };
-
       const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
-      const targetCW = targetFeature.sketchCanvasWidth ?? defaultCW;
-      const targetCH = targetFeature.sketchCanvasHeight ?? defaultCH;
-      const toolCW = toolFeature.sketchCanvasWidth ?? defaultCW;
-      const toolCH = toolFeature.sketchCanvasHeight ?? defaultCH;
+
+      const targetTranslation = getFeatureTranslation(targetFeature);
+      const toolTranslation = getFeatureTranslation(toolFeature);
 
       const geometryData = await worker.booleanOp(
-        targetFeature.sketch.entities,
-        targetFeature.distance,
-        targetFeature.direction,
+        featureToDescriptor(targetFeature, features, defaultCW, defaultCH),
         targetTranslation,
-        targetCW,
-        targetCH,
-        toolFeature.sketch.entities,
-        toolFeature.distance,
-        toolFeature.direction,
+        featureToDescriptor(toolFeature, features, defaultCW, defaultCH),
         toolTranslation,
-        toolCW,
-        toolCH,
         operation
       );
 
@@ -1027,6 +1099,7 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
         targetId: targetFeatureId,
         toolId: toolFeatureId,
         position: { x: geomCenter.x, y: geomCenter.y, z: geomCenter.z },
+        geometryCenter: { x: geomCenter.x, y: geomCenter.y, z: geomCenter.z },
       };
 
       // Teoría de conjuntos: A∪B, A\B, A∩B → el resultado REEMPLAZA a los
@@ -1072,10 +1145,10 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
     const { features } = get();
 
     const sourceFeature = features.find(
-      (f): f is ExtrudeFeature => f.id === sourceFeatureId && f.type === FeatureType.EXTRUDE
+      (f) => f.id === sourceFeatureId && (SOLID_FEATURE_TYPES as readonly string[]).includes(f.type)
     );
     if (!sourceFeature) {
-      throw new Error(`Source extrude feature not found: ${sourceFeatureId}`);
+      throw new Error(`Source solid feature not found: ${sourceFeatureId}`);
     }
 
     if (angle < -30 || angle > 30) {
@@ -1092,13 +1165,11 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       await worker.initialize();
       set({ processingProgress: 50 });
 
-      const geometryData = await worker.draft(
-        sourceFeature.sketch.entities,
-        sourceFeature.distance,
-        sourceFeature.direction,
-        angle,
-        neutralPlane
-      );
+      const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
+      const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
+      const sourceTranslation = getFeatureTranslation(sourceFeature);
+
+      const geometryData = await worker.draft(sourceDesc, sourceTranslation, angle, neutralPlane);
 
       set({ processingProgress: 80 });
 
@@ -1142,10 +1213,10 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
     const { features } = get();
 
     const sourceFeature = features.find(
-      (f): f is ExtrudeFeature => f.id === sourceFeatureId && f.type === FeatureType.EXTRUDE
+      (f) => f.id === sourceFeatureId && (SOLID_FEATURE_TYPES as readonly string[]).includes(f.type)
     );
     if (!sourceFeature) {
-      throw new Error(`Source extrude feature not found: ${sourceFeatureId}`);
+      throw new Error(`Source solid feature not found: ${sourceFeatureId}`);
     }
 
     try {
@@ -1158,12 +1229,11 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       await worker.initialize();
       set({ processingProgress: 50 });
 
-      const geometryData = await worker.offset(
-        sourceFeature.sketch.entities,
-        sourceFeature.distance,
-        sourceFeature.direction,
-        distance
-      );
+      const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
+      const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
+      const sourceTranslation = getFeatureTranslation(sourceFeature);
+
+      const geometryData = await worker.offset(sourceDesc, sourceTranslation, distance);
 
       set({ processingProgress: 80 });
 

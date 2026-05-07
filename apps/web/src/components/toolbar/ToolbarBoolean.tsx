@@ -54,8 +54,17 @@ export default function ToolbarBoolean() {
   const orientation = usePanelOrientation();
   const isVertical = orientation === 'vertical';
 
-  const extrudeFeatures = features.filter((f) => f.type === FeatureType.EXTRUDE);
-  const canRun = extrudeFeatures.length >= 2 && !isProcessing;
+  const SOLID_TYPES = [
+    FeatureType.EXTRUDE,
+    FeatureType.PRIMITIVE_BOX,
+    FeatureType.PRIMITIVE_SPHERE,
+    FeatureType.PRIMITIVE_CYLINDER,
+    FeatureType.PRIMITIVE_CONE,
+    FeatureType.PRIMITIVE_TORUS,
+    FeatureType.BOOLEAN,
+  ] as const;
+  const solidFeatures = features.filter((f) => (SOLID_TYPES as readonly string[]).includes(f.type));
+  const canRun = solidFeatures.length >= 2 && !isProcessing;
 
   return (
     <div
@@ -85,7 +94,7 @@ export default function ToolbarBoolean() {
             <button
               key={op.type}
               data-testid={`boolean-${op.type}-btn`}
-              title={canRun ? op.title : 'Necesitas al menos 2 extrusiones'}
+              title={canRun ? op.title : 'Necesitas al menos 2 sólidos'}
               disabled={isProcessing}
               onClick={() => startBooleanWizard(op.type)}
               className={cn(

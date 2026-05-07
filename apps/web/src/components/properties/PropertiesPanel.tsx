@@ -969,8 +969,17 @@ function BooleanPanel({ featureId }: BooleanPanelProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const SOLID_TYPES = [
+    FeatureType.EXTRUDE,
+    FeatureType.PRIMITIVE_BOX,
+    FeatureType.PRIMITIVE_SPHERE,
+    FeatureType.PRIMITIVE_CYLINDER,
+    FeatureType.PRIMITIVE_CONE,
+    FeatureType.PRIMITIVE_TORUS,
+    FeatureType.BOOLEAN,
+  ] as const;
   const otherExtrudes = features.filter(
-    (f) => f.type === FeatureType.EXTRUDE && f.id !== featureId
+    (f) => (SOLID_TYPES as readonly string[]).includes(f.type) && f.id !== featureId
   );
 
   const handleApply = async () => {

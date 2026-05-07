@@ -14,6 +14,20 @@ interface GeometryData {
   indices: Uint32Array;
 }
 
+/**
+ * Descriptor discriminado para construir cualquier sólido en operaciones booleanas y modificadores.
+ * Coincide con el tipo interno `BooleanShapeDescriptor` del worker.
+ * El variant `boolean` es recursivo para encadenar booleanas.
+ */
+export type BooleanShapeDescriptor =
+  | { kind: 'extrude'; entities: SketchEntity[]; distance: number; direction: 'positive' | 'negative' | 'both'; canvasWidth?: number; canvasHeight?: number }
+  | { kind: 'box'; width: number; height: number; depth: number }
+  | { kind: 'sphere'; radius: number }
+  | { kind: 'cylinder'; radius: number; height: number }
+  | { kind: 'cone'; baseRadius: number; topRadius: number; height: number }
+  | { kind: 'torus'; majorRadius: number; minorRadius: number }
+  | { kind: 'boolean'; target: BooleanShapeDescriptor; targetTranslation: { x: number; y: number; z: number }; tool: BooleanShapeDescriptor; toolTranslation: { x: number; y: number; z: number }; operation: 'union' | 'subtract' | 'intersect' };
+
 interface PendingRequest {
   resolve: (value: any) => void;
   reject: (error: Error) => void;
@@ -167,9 +181,8 @@ export class CADWorkerClient {
    * Ejecuta operación de fillet (redondeo de aristas)
    */
   async fillet(
-    entities: SketchEntity[],
-    extrudeDistance: number,
-    direction: 'positive' | 'negative' | 'both' = 'positive',
+    source: BooleanShapeDescriptor,
+    sourceTranslation: { x: number; y: number; z: number },
     radius: number
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
@@ -187,7 +200,7 @@ export class CADWorkerClient {
     this.worker?.postMessage({
       id,
       type: 'fillet',
-      payload: { entities, extrudeDistance, direction, radius },
+      payload: { source, sourceTranslation, radius },
     });
 
     return promise;
@@ -197,9 +210,8 @@ export class CADWorkerClient {
    * Ejecuta operación de chamfer (biselado de aristas)
    */
   async chamfer(
-    entities: SketchEntity[],
-    extrudeDistance: number,
-    direction: 'positive' | 'negative' | 'both' = 'positive',
+    source: BooleanShapeDescriptor,
+    sourceTranslation: { x: number; y: number; z: number },
     chamferDistance: number
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
@@ -217,7 +229,7 @@ export class CADWorkerClient {
     this.worker?.postMessage({
       id,
       type: 'chamfer',
-      payload: { entities, extrudeDistance, direction, chamferDistance },
+      payload: { source, sourceTranslation, chamferDistance },
     });
 
     return promise;
@@ -227,9 +239,8 @@ export class CADWorkerClient {
    * Ejecuta operación de shell (vaciado con espesor uniforme)
    */
   async shell(
-    entities: SketchEntity[],
-    extrudeDistance: number,
-    direction: 'positive' | 'negative' | 'both' = 'positive',
+    source: BooleanShapeDescriptor,
+    sourceTranslation: { x: number; y: number; z: number },
     thickness: number
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
@@ -247,7 +258,7 @@ export class CADWorkerClient {
     this.worker?.postMessage({
       id,
       type: 'shell',
-      payload: { entities, extrudeDistance, direction, thickness },
+      payload: { source, sourceTranslation, thickness },
     });
 
     return promise;
@@ -339,21 +350,13 @@ export class CADWorkerClient {
   }
 
   /**
-   * Ejecuta operación booleana entre dos sólidos extruidos
+   * Ejecuta operación booleana entre dos sólidos (soporta extrude, box, sphere, cylinder, cone, torus)
    */
   async booleanOp(
-    targetEntities: SketchEntity[],
-    targetDistance: number,
-    targetDirection: 'positive' | 'negative' | 'both',
+    target: BooleanShapeDescriptor,
     targetTranslation: { x: number; y: number; z: number },
-    targetCanvasWidth: number,
-    targetCanvasHeight: number,
-    toolEntities: SketchEntity[],
-    toolDistance: number,
-    toolDirection: 'positive' | 'negative' | 'both',
+    tool: BooleanShapeDescriptor,
     toolTranslation: { x: number; y: number; z: number },
-    toolCanvasWidth: number,
-    toolCanvasHeight: number,
     operation: 'union' | 'subtract' | 'intersect'
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
@@ -368,21 +371,7 @@ export class CADWorkerClient {
     this.worker?.postMessage({
       id,
       type: 'boolean',
-      payload: {
-        targetEntities,
-        targetDistance,
-        targetDirection,
-        targetTranslation,
-        targetCanvasWidth,
-        targetCanvasHeight,
-        toolEntities,
-        toolDistance,
-        toolDirection,
-        toolTranslation,
-        toolCanvasWidth,
-        toolCanvasHeight,
-        operation,
-      },
+      payload: { target, targetTranslation, tool, toolTranslation, operation },
     });
 
     return promise;
@@ -392,9 +381,8 @@ export class CADWorkerClient {
    * Ejecuta operación de draft (ángulo de desmoldeo)
    */
   async draft(
-    entities: SketchEntity[],
-    extrudeDistance: number,
-    direction: 'positive' | 'negative' | 'both' = 'positive',
+    source: BooleanShapeDescriptor,
+    sourceTranslation: { x: number; y: number; z: number },
     angle: number,
     neutralPlane: 'XY' | 'XZ' | 'YZ' = 'XY'
   ): Promise<GeometryData> {
@@ -413,7 +401,7 @@ export class CADWorkerClient {
     this.worker?.postMessage({
       id,
       type: 'draft',
-      payload: { entities, extrudeDistance, direction, angle, neutralPlane },
+      payload: { source, sourceTranslation, angle, neutralPlane },
     });
 
     return promise;
@@ -423,9 +411,8 @@ export class CADWorkerClient {
    * Ejecuta operación de offset (desplazamiento de superficie)
    */
   async offset(
-    entities: SketchEntity[],
-    extrudeDistance: number,
-    direction: 'positive' | 'negative' | 'both' = 'positive',
+    source: BooleanShapeDescriptor,
+    sourceTranslation: { x: number; y: number; z: number },
     offsetDistance: number
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
@@ -440,7 +427,7 @@ export class CADWorkerClient {
     this.worker?.postMessage({
       id,
       type: 'offset',
-      payload: { entities, extrudeDistance, direction, offsetDistance },
+      payload: { source, sourceTranslation, offsetDistance },
     });
 
     return promise;

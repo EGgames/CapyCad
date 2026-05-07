@@ -48,23 +48,20 @@ interface ExtrudePayload {
 }
 
 interface FilletPayload {
-  entities: SketchEntity[];
-  extrudeDistance: number;
-  direction: 'positive' | 'negative' | 'both';
+  source: BooleanShapeDescriptor;
+  sourceTranslation?: { x: number; y: number; z: number };
   radius: number;
 }
 
 interface ChamferPayload {
-  entities: SketchEntity[];
-  extrudeDistance: number;
-  direction: 'positive' | 'negative' | 'both';
+  source: BooleanShapeDescriptor;
+  sourceTranslation?: { x: number; y: number; z: number };
   chamferDistance: number;
 }
 
 interface ShellPayload {
-  entities: SketchEntity[];
-  extrudeDistance: number;
-  direction: 'positive' | 'negative' | 'both';
+  source: BooleanShapeDescriptor;
+  sourceTranslation?: { x: number; y: number; z: number };
   thickness: number;
 }
 
@@ -84,39 +81,41 @@ interface RevolvePayload {
   angle: number; // degrees
 }
 
+/**
+ * Descriptor discriminado para construir cualquier sólido en espacio OCC Z-up.
+ * Todos los tipos de figuras soportados en operaciones booleanas y modificadores.
+ * El variant `boolean` es recursivo para encadenar booleanas.
+ */
+type BooleanShapeDescriptor =
+  | { kind: 'extrude'; entities: SketchEntity[]; distance: number; direction: 'positive' | 'negative' | 'both'; canvasWidth?: number; canvasHeight?: number }
+  | { kind: 'box'; width: number; height: number; depth: number }
+  | { kind: 'sphere'; radius: number }
+  | { kind: 'cylinder'; radius: number; height: number }
+  | { kind: 'cone'; baseRadius: number; topRadius: number; height: number }
+  | { kind: 'torus'; majorRadius: number; minorRadius: number }
+  | { kind: 'boolean'; target: BooleanShapeDescriptor; targetTranslation: { x: number; y: number; z: number }; tool: BooleanShapeDescriptor; toolTranslation: { x: number; y: number; z: number }; operation: 'union' | 'subtract' | 'intersect' };
+
 interface BooleanPayload {
-  targetEntities: SketchEntity[];
-  targetDistance: number;
-  targetDirection: 'positive' | 'negative' | 'both';
-  targetCanvasWidth?: number;
-  targetCanvasHeight?: number;
-  /** Traslación a aplicar al sólido objetivo (Three.js coords) */
+  target: BooleanShapeDescriptor;
+  /** Traslación a aplicar al sólido objetivo (Three.js coords → OCC con (dx,-dz,dy)) */
   targetTranslation?: { x: number; y: number; z: number };
-  toolEntities: SketchEntity[];
-  toolDistance: number;
-  toolDirection: 'positive' | 'negative' | 'both';
-  toolCanvasWidth?: number;
-  toolCanvasHeight?: number;
-  /** Traslación a aplicar al sólido herramienta (Three.js coords) */
+  tool: BooleanShapeDescriptor;
+  /** Traslación a aplicar al sólido herramienta (Three.js coords → OCC con (dx,-dz,dy)) */
   toolTranslation?: { x: number; y: number; z: number };
   operation: 'union' | 'subtract' | 'intersect';
-  canvasWidth?: number;
-  canvasHeight?: number;
 }
 
 interface DraftPayload {
-  entities: SketchEntity[];
-  extrudeDistance: number;
-  direction: 'positive' | 'negative' | 'both';
+  source: BooleanShapeDescriptor;
+  sourceTranslation?: { x: number; y: number; z: number };
   /** Ángulo de desmoldeo en grados */
   angle: number;
   neutralPlane: 'XY' | 'XZ' | 'YZ';
 }
 
 interface OffsetPayload {
-  entities: SketchEntity[];
-  extrudeDistance: number;
-  direction: 'positive' | 'negative' | 'both';
+  source: BooleanShapeDescriptor;
+  sourceTranslation?: { x: number; y: number; z: number };
   /** Distancia de offset (positivo = hacia afuera, negativo = hacia adentro) */
   offsetDistance: number;
 }
@@ -391,11 +390,15 @@ function executeFillet(payload: FilletPayload): GeometryData {
   const { TopAbs_ShapeEnum, TopoDS } = oc as any;
 
   try {
-    const baseShape = buildExtrudedShape(
-      payload.entities,
-      payload.extrudeDistance,
-      payload.direction
-    );
+    let baseShape = buildShapeForBoolean(payload.source);
+    if (payload.sourceTranslation) {
+      const t = payload.sourceTranslation;
+      if (t.x !== 0 || t.y !== 0 || t.z !== 0) {
+        const trsf = new oc.gp_Trsf_1();
+        trsf.SetTranslation_1(new oc.gp_Vec_4(t.x, -t.z, t.y));
+        baseShape = new oc.BRepBuilderAPI_Transform_2(baseShape, trsf, false).Shape();
+      }
+    }
 
     const filleter = new oc.BRepFilletAPI_MakeFillet(
       baseShape,
@@ -431,11 +434,15 @@ function executeChamfer(payload: ChamferPayload): GeometryData {
   const { TopAbs_ShapeEnum, TopoDS } = oc as any;
 
   try {
-    const baseShape = buildExtrudedShape(
-      payload.entities,
-      payload.extrudeDistance,
-      payload.direction
-    );
+    let baseShape = buildShapeForBoolean(payload.source);
+    if (payload.sourceTranslation) {
+      const t = payload.sourceTranslation;
+      if (t.x !== 0 || t.y !== 0 || t.z !== 0) {
+        const trsf = new oc.gp_Trsf_1();
+        trsf.SetTranslation_1(new oc.gp_Vec_4(t.x, -t.z, t.y));
+        baseShape = new oc.BRepBuilderAPI_Transform_2(baseShape, trsf, false).Shape();
+      }
+    }
 
     const chamferer = new oc.BRepFilletAPI_MakeChamfer(baseShape);
 
@@ -468,11 +475,15 @@ function executeShell(payload: ShellPayload): GeometryData {
   const { TopAbs_ShapeEnum, TopoDS, BRep_Tool, TopLoc_Location_1: TopLoc_Location } = oc as any;
 
   try {
-    const baseShape = buildExtrudedShape(
-      payload.entities,
-      payload.extrudeDistance,
-      payload.direction
-    );
+    let baseShape = buildShapeForBoolean(payload.source);
+    if (payload.sourceTranslation) {
+      const t = payload.sourceTranslation;
+      if (t.x !== 0 || t.y !== 0 || t.z !== 0) {
+        const trsf = new oc.gp_Trsf_1();
+        trsf.SetTranslation_1(new oc.gp_Vec_4(t.x, -t.z, t.y));
+        baseShape = new oc.BRepBuilderAPI_Transform_2(baseShape, trsf, false).Shape();
+      }
+    }
 
     // Encontrar la cara con mayor coordenada Z media (cara superior del extruido)
     let topFace: any = null;
@@ -655,12 +666,21 @@ function executeDraft(payload: DraftPayload): GeometryData {
 
   const { TopAbs_ShapeEnum, TopoDS } = oc as any;
 
+  const buildBase = () => {
+    let shape = buildShapeForBoolean(payload.source);
+    if (payload.sourceTranslation) {
+      const t = payload.sourceTranslation;
+      if (t.x !== 0 || t.y !== 0 || t.z !== 0) {
+        const trsf = new oc.gp_Trsf_1();
+        trsf.SetTranslation_1(new oc.gp_Vec_4(t.x, -t.z, t.y));
+        shape = new oc.BRepBuilderAPI_Transform_2(shape, trsf, false).Shape();
+      }
+    }
+    return shape;
+  };
+
   try {
-    const baseShape = buildExtrudedShape(
-      payload.entities,
-      payload.extrudeDistance,
-      payload.direction
-    );
+    const baseShape = buildBase();
 
     const angleRad = (payload.angle * Math.PI) / 180;
 
@@ -692,12 +712,7 @@ function executeDraft(payload: DraftPayload): GeometryData {
   } catch (error) {
     console.error('[CAD Worker] Draft failed:', error);
     // Fallback: devolver shape sin draft
-    const baseShape = buildExtrudedShape(
-      payload.entities,
-      payload.extrudeDistance,
-      payload.direction
-    );
-    return triangulateShape(baseShape);
+    return triangulateShape(buildBase());
   }
 }
 
@@ -708,12 +723,21 @@ function executeDraft(payload: DraftPayload): GeometryData {
 function executeOffset(payload: OffsetPayload): GeometryData {
   if (!oc) throw new Error('OpenCascade not initialized');
 
+  const buildBase = () => {
+    let shape = buildShapeForBoolean(payload.source);
+    if (payload.sourceTranslation) {
+      const t = payload.sourceTranslation;
+      if (t.x !== 0 || t.y !== 0 || t.z !== 0) {
+        const trsf = new oc.gp_Trsf_1();
+        trsf.SetTranslation_1(new oc.gp_Vec_4(t.x, -t.z, t.y));
+        shape = new oc.BRepBuilderAPI_Transform_2(shape, trsf, false).Shape();
+      }
+    }
+    return shape;
+  };
+
   try {
-    const baseShape = buildExtrudedShape(
-      payload.entities,
-      payload.extrudeDistance,
-      payload.direction
-    );
+    const baseShape = buildBase();
 
     const offsetMaker = new oc.BRepOffsetAPI_MakeOffsetShape();
     offsetMaker.PerformByJoin(
@@ -738,44 +762,89 @@ function executeOffset(payload: OffsetPayload): GeometryData {
   } catch (error) {
     console.error('[CAD Worker] Offset failed:', error);
     // Fallback: devolver shape sin offset
-    const baseShape = buildExtrudedShape(
-      payload.entities,
-      payload.extrudeDistance,
-      payload.direction
-    );
-    return triangulateShape(baseShape);
+    return triangulateShape(buildBase());
   }
 }
 
 /**
- * Ejecuta operación booleana (union, subtract, intersect)
+ * Construye un sólido OCC en espacio Z-up para uso en operaciones booleanas.
+ * Todos los primitivos se construyen con Z como eje de altura para que tras
+ * `rotateGeometry90` el resultado quede en el mismo espacio Three.js Y-up
+ * que el renderizado normal de cada primitiva.
+ */
+function buildShapeForBoolean(desc: BooleanShapeDescriptor): any {
+  if (!oc) throw new Error('OpenCascade not initialized');
+
+  switch (desc.kind) {
+    case 'extrude':
+      return buildExtrudedShape(desc.entities, desc.distance, desc.direction, desc.canvasWidth, desc.canvasHeight);
+
+    case 'box': {
+      // Z-up: width en X, depth en Y, height en Z
+      // Tras rotateGeometry90 → idéntico al renderizado de la primitiva (Y-up, sin rotación).
+      const corner = new oc.gp_Pnt_3(-desc.width / 2, -desc.depth / 2, 0);
+      return new oc.BRepPrimAPI_MakeBox_3(corner, desc.width, desc.depth, desc.height).Shape();
+    }
+
+    case 'sphere':
+      return new oc.BRepPrimAPI_MakeSphere_1(desc.radius).Shape();
+
+    case 'cylinder': {
+      const zAxis = new oc.gp_Ax2_3(new oc.gp_Pnt_3(0, 0, 0), new oc.gp_Dir_4(0, 0, 1));
+      return new oc.BRepPrimAPI_MakeCylinder_3(zAxis, desc.radius, desc.height).Shape();
+    }
+
+    case 'cone': {
+      const zAxis = new oc.gp_Ax2_3(new oc.gp_Pnt_3(0, 0, 0), new oc.gp_Dir_4(0, 0, 1));
+      return new oc.BRepPrimAPI_MakeCone_3(zAxis, desc.baseRadius, desc.topRadius, desc.height).Shape();
+    }
+
+    case 'torus': {
+      const zAxis = new oc.gp_Ax2_3(new oc.gp_Pnt_3(0, 0, 0), new oc.gp_Dir_4(0, 0, 1));
+      return new oc.BRepPrimAPI_MakeTorus_5(zAxis, desc.majorRadius, desc.minorRadius).Shape();
+    }
+
+    case 'boolean': {
+      // Reutiliza la lógica de executeBoolean pero sin triangular — devuelve TopoDS_Shape.
+      const applyT = (shape: any, t: { x: number; y: number; z: number }) => {
+        if (t.x === 0 && t.y === 0 && t.z === 0) return shape;
+        const trsf = new oc.gp_Trsf_1();
+        trsf.SetTranslation_1(new oc.gp_Vec_4(t.x, -t.z, t.y));
+        return new oc.BRepBuilderAPI_Transform_2(shape, trsf, false).Shape();
+      };
+      let targetShape = buildShapeForBoolean(desc.target);
+      let toolShape = buildShapeForBoolean(desc.tool);
+      targetShape = applyT(targetShape, desc.targetTranslation);
+      toolShape = applyT(toolShape, desc.toolTranslation);
+      const progressRange = new oc.Message_ProgressRange_1();
+      if (desc.operation === 'union') {
+        return new oc.BRepAlgoAPI_Fuse_3(targetShape, toolShape, progressRange).Shape();
+      } else if (desc.operation === 'subtract') {
+        return new oc.BRepAlgoAPI_Cut_3(targetShape, toolShape, progressRange).Shape();
+      } else {
+        return new oc.BRepAlgoAPI_Common_3(targetShape, toolShape, progressRange).Shape();
+      }
+    }
+
+    default: {
+      const _exhaustive: never = desc;
+      throw new Error(`[CAD Worker] Unsupported shape descriptor: ${(_exhaustive as any).kind}`);
+    }
+  }
+}
+
+/**
+ * Ejecuta operación booleana (union, subtract, intersect).
+ * Soporta cualquier combinación de: extrude, box, sphere, cylinder, cone, torus.
  */
 function executeBoolean(payload: BooleanPayload): GeometryData {
   if (!oc) throw new Error('OpenCascade not initialized');
 
   try {
-    const targetCW = payload.targetCanvasWidth ?? payload.canvasWidth ?? 800;
-    const targetCH = payload.targetCanvasHeight ?? payload.canvasHeight ?? 600;
-    const toolCW = payload.toolCanvasWidth ?? payload.canvasWidth ?? 800;
-    const toolCH = payload.toolCanvasHeight ?? payload.canvasHeight ?? 600;
+    let targetShape = buildShapeForBoolean(payload.target);
+    let toolShape = buildShapeForBoolean(payload.tool);
 
-    let targetShape = buildExtrudedShape(
-      payload.targetEntities,
-      payload.targetDistance,
-      payload.targetDirection,
-      targetCW,
-      targetCH
-    );
-    let toolShape = buildExtrudedShape(
-      payload.toolEntities,
-      payload.toolDistance,
-      payload.toolDirection,
-      toolCW,
-      toolCH
-    );
-
-    // Aplicar traslaciones en espacio OCC.
-    // Conversión Three.js → OCC: (dx, dy, dz)_three → (dx, -dz, dy)_occ
+    // Three.js → OCC Z-up: (dx, dy, dz)_three → (dx, -dz, dy)_occ
     const applyTranslation = (shape: any, t: { x: number; y: number; z: number }) => {
       if (t.x === 0 && t.y === 0 && t.z === 0) return shape;
       const trsf = new oc.gp_Trsf_1();
@@ -783,12 +852,8 @@ function executeBoolean(payload: BooleanPayload): GeometryData {
       return new oc.BRepBuilderAPI_Transform_2(shape, trsf, false).Shape();
     };
 
-    if (payload.targetTranslation) {
-      targetShape = applyTranslation(targetShape, payload.targetTranslation);
-    }
-    if (payload.toolTranslation) {
-      toolShape = applyTranslation(toolShape, payload.toolTranslation);
-    }
+    if (payload.targetTranslation) targetShape = applyTranslation(targetShape, payload.targetTranslation);
+    if (payload.toolTranslation) toolShape = applyTranslation(toolShape, payload.toolTranslation);
 
     let resultShape: any;
     const progressRange = new oc.Message_ProgressRange_1();
