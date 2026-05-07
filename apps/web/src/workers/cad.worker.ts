@@ -31,6 +31,9 @@ interface WorkerMessage {
     | 'boolean'
     | 'draft'
     | 'offset'
+    | 'bevel'
+    | 'cove'
+    | 'get_edges'
     | 'primitive_box'
     | 'primitive_sphere'
     | 'primitive_cylinder'
@@ -47,21 +50,57 @@ interface ExtrudePayload {
   canvasHeight?: number;
 }
 
+/** Segmento de arista BRep en coordenadas OCC (misma base que la geometría triangulada) */
+export interface EdgeSegmentData {
+  index: number;
+  start: { x: number; y: number; z: number };
+  end: { x: number; y: number; z: number };
+  mid: { x: number; y: number; z: number };
+}
+
+/** Modificador previamente aplicado — usado para reproducir la cadena antes de añadir uno nuevo */
+interface AppliedModifier {
+  type: 'fillet' | 'chamfer' | 'bevel' | 'cove' | 'shell' | 'draft' | 'offset';
+  params: {
+    radius?: number;
+    distance?: number;
+    d1?: number;
+    d2?: number;
+    thickness?: number;
+    angle?: number;
+    neutralPlane?: 'XY' | 'XZ' | 'YZ';
+  };
+  edgeIndices?: number[];
+}
+
+interface GetEdgesPayload {
+  source: BooleanShapeDescriptor;
+  sourceTranslation?: { x: number; y: number; z: number };
+  sourceModifiers?: AppliedModifier[];
+}
+
 interface FilletPayload {
   source: BooleanShapeDescriptor;
   sourceTranslation?: { x: number; y: number; z: number };
+  sourceModifiers?: AppliedModifier[];
   radius: number;
+  /** Índices de aristas a filetear (vacío = todas) */
+  edgeIndices?: number[];
 }
 
 interface ChamferPayload {
   source: BooleanShapeDescriptor;
   sourceTranslation?: { x: number; y: number; z: number };
+  sourceModifiers?: AppliedModifier[];
   chamferDistance: number;
+  /** Índices de aristas a biselar (vacío = todas) */
+  edgeIndices?: number[];
 }
 
 interface ShellPayload {
   source: BooleanShapeDescriptor;
   sourceTranslation?: { x: number; y: number; z: number };
+  sourceModifiers?: AppliedModifier[];
   thickness: number;
 }
 
@@ -108,6 +147,7 @@ interface BooleanPayload {
 interface DraftPayload {
   source: BooleanShapeDescriptor;
   sourceTranslation?: { x: number; y: number; z: number };
+  sourceModifiers?: AppliedModifier[];
   /** Ángulo de desmoldeo en grados */
   angle: number;
   neutralPlane: 'XY' | 'XZ' | 'YZ';
@@ -116,8 +156,31 @@ interface DraftPayload {
 interface OffsetPayload {
   source: BooleanShapeDescriptor;
   sourceTranslation?: { x: number; y: number; z: number };
+  sourceModifiers?: AppliedModifier[];
   /** Distancia de offset (positivo = hacia afuera, negativo = hacia adentro) */
   offsetDistance: number;
+}
+
+interface BevelPayload {
+  source: BooleanShapeDescriptor;
+  sourceTranslation?: { x: number; y: number; z: number };
+  sourceModifiers?: AppliedModifier[];
+  /** Distancia desde la primera cara adyacente */
+  d1: number;
+  /** Distancia desde la segunda cara adyacente (distinto de d1 → corte asimétrico) */
+  d2: number;
+  /** Índices de aristas a biselar (vacío = todas) */
+  edgeIndices?: number[];
+}
+
+interface CovePayload {
+  source: BooleanShapeDescriptor;
+  sourceTranslation?: { x: number; y: number; z: number };
+  sourceModifiers?: AppliedModifier[];
+  /** Radio del redondeo cóncavo (media caña) */
+  radius: number;
+  /** Índices de aristas a aplicar cove (vacío = todas) */
+  edgeIndices?: number[];
 }
 
 interface BoxPayload {
@@ -382,6 +445,71 @@ function executeExtrude(payload: ExtrudePayload): GeometryData {
 }
 
 /**
+ * Obtiene las aristas BRep de un sólido como segmentos (start, mid, end) en coordenadas OCC.
+ * Devuelve un array indexado que el cliente usa para selección visual.
+ */
+function executeGetEdges(payload: GetEdgesPayload): EdgeSegmentData[] {
+  if (!oc) throw new Error('OpenCascade not initialized');
+
+  const { TopAbs_ShapeEnum, TopoDS } = oc as any;
+
+  try {
+    let baseShape = buildShapeForBoolean(payload.source);
+    if (payload.sourceTranslation) {
+      const t = payload.sourceTranslation;
+      if (t.x !== 0 || t.y !== 0 || t.z !== 0) {
+        const trsf = new oc.gp_Trsf_1();
+        trsf.SetTranslation_1(new oc.gp_Vec_4(t.x, -t.z, t.y));
+        baseShape = new oc.BRepBuilderAPI_Transform_2(baseShape, trsf, false).Shape();
+      }
+    }
+    if (payload.sourceModifiers && payload.sourceModifiers.length > 0) {
+      baseShape = applyModifierChain(baseShape, payload.sourceModifiers);
+    }
+
+    const segments: EdgeSegmentData[] = [];
+    const edgeExplorer = new oc.TopExp_Explorer_2(
+      baseShape,
+      TopAbs_ShapeEnum.TopAbs_EDGE,
+      TopAbs_ShapeEnum.TopAbs_SHAPE
+    );
+
+    let index = 0;
+    while (edgeExplorer.More()) {
+      const edge = TopoDS.Edge_1(edgeExplorer.Current());
+      try {
+        const curve = new (oc as any).BRepAdaptor_Curve_2(edge);
+        const first = curve.FirstParameter();
+        const last = curve.LastParameter();
+        const mid = (first + last) / 2;
+
+        const pStart = curve.Value(first);
+        const pMid = curve.Value(mid);
+        const pEnd = curve.Value(last);
+
+        segments.push({
+          index,
+          // Aplicar rotateGeometry90: OCC Z-up (x,y,z) → Three.js Y-up (x,z,−y)
+          // para que los puntos coincidan con las coordenadas del mesh renderizado.
+          start: { x: pStart.X(), y:  pStart.Z(), z: -pStart.Y() },
+          mid:   { x: pMid.X(),   y:  pMid.Z(),   z: -pMid.Y()   },
+          end:   { x: pEnd.X(),   y:  pEnd.Z(),   z: -pEnd.Y()   },
+        });
+      } catch {
+        // skip degenerate edges
+      }
+      index++;
+      edgeExplorer.Next();
+    }
+
+    return segments;
+  } catch (error) {
+    console.error('[CAD Worker] GetEdges failed:', error);
+    throw error;
+  }
+}
+
+/**
  * Ejecuta operación de fillet (redondeo de aristas)
  */
 function executeFillet(payload: FilletPayload): GeometryData {
@@ -399,11 +527,18 @@ function executeFillet(payload: FilletPayload): GeometryData {
         baseShape = new oc.BRepBuilderAPI_Transform_2(baseShape, trsf, false).Shape();
       }
     }
+    if (payload.sourceModifiers && payload.sourceModifiers.length > 0) {
+      baseShape = applyModifierChain(baseShape, payload.sourceModifiers);
+    }
 
     const filleter = new oc.BRepFilletAPI_MakeFillet(
       baseShape,
       (oc as any).ChFi3d_FilletShape.ChFi3d_Rational
     );
+
+    const allowedSet = payload.edgeIndices && payload.edgeIndices.length > 0
+      ? new Set(payload.edgeIndices)
+      : null;
 
     const edgeExplorer = new oc.TopExp_Explorer_2(
       baseShape,
@@ -411,14 +546,18 @@ function executeFillet(payload: FilletPayload): GeometryData {
       TopAbs_ShapeEnum.TopAbs_SHAPE
     );
 
+    let edgeIdx = 0;
     while (edgeExplorer.More()) {
-      const edge = TopoDS.Edge_1(edgeExplorer.Current());
-      filleter.Add_2(payload.radius, edge);
+      if (!allowedSet || allowedSet.has(edgeIdx)) {
+        const edge = TopoDS.Edge_1(edgeExplorer.Current());
+        filleter.Add_2(payload.radius, edge);
+      }
+      edgeIdx++;
       edgeExplorer.Next();
     }
 
     const filletedShape = filleter.Shape();
-    return triangulateShape(filletedShape);
+    return rotateGeometry90(triangulateShape(filletedShape));
   } catch (error) {
     console.error('[CAD Worker] Fillet failed:', error);
     throw error;
@@ -443,8 +582,15 @@ function executeChamfer(payload: ChamferPayload): GeometryData {
         baseShape = new oc.BRepBuilderAPI_Transform_2(baseShape, trsf, false).Shape();
       }
     }
+    if (payload.sourceModifiers && payload.sourceModifiers.length > 0) {
+      baseShape = applyModifierChain(baseShape, payload.sourceModifiers);
+    }
 
     const chamferer = new oc.BRepFilletAPI_MakeChamfer(baseShape);
+
+    const allowedSet = payload.edgeIndices && payload.edgeIndices.length > 0
+      ? new Set(payload.edgeIndices)
+      : null;
 
     const edgeExplorer = new oc.TopExp_Explorer_2(
       baseShape,
@@ -452,16 +598,152 @@ function executeChamfer(payload: ChamferPayload): GeometryData {
       TopAbs_ShapeEnum.TopAbs_SHAPE
     );
 
+    let edgeIdx = 0;
     while (edgeExplorer.More()) {
-      const edge = TopoDS.Edge_1(edgeExplorer.Current());
-      chamferer.Add_2(payload.chamferDistance, edge);
+      if (!allowedSet || allowedSet.has(edgeIdx)) {
+        const edge = TopoDS.Edge_1(edgeExplorer.Current());
+        chamferer.Add_2(payload.chamferDistance, edge);
+      }
+      edgeIdx++;
       edgeExplorer.Next();
     }
 
     const chamferedShape = chamferer.Shape();
-    return triangulateShape(chamferedShape);
+    return rotateGeometry90(triangulateShape(chamferedShape));
   } catch (error) {
     console.error('[CAD Worker] Chamfer failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Ejecuta operación de bisel (bevel — chaflán asimétrico con d1 ≠ d2).
+ * Usa BRepFilletAPI_MakeChamfer.Add_3(d1, d2, edge, face) iterando las caras
+ * del sólido y asignando la primera cara adyacente a cada arista.
+ */
+function executeBevel(payload: BevelPayload): GeometryData {
+  if (!oc) throw new Error('OpenCascade not initialized');
+
+  const { TopAbs_ShapeEnum, TopoDS } = oc as any;
+
+  try {
+    let baseShape = buildShapeForBoolean(payload.source);
+    if (payload.sourceTranslation) {
+      const t = payload.sourceTranslation;
+      if (t.x !== 0 || t.y !== 0 || t.z !== 0) {
+        const trsf = new oc.gp_Trsf_1();
+        trsf.SetTranslation_1(new oc.gp_Vec_4(t.x, -t.z, t.y));
+        baseShape = new oc.BRepBuilderAPI_Transform_2(baseShape, trsf, false).Shape();
+      }
+    }
+    if (payload.sourceModifiers && payload.sourceModifiers.length > 0) {
+      baseShape = applyModifierChain(baseShape, payload.sourceModifiers);
+    }
+
+    // Construir mapa edge → primera cara adyacente
+    const edgeFaceEntries: Array<{ edge: any; face: any }> = [];
+    const seenEdgeHashes = new Set<number>();
+
+    const faceExplorer = new oc.TopExp_Explorer_2(
+      baseShape,
+      TopAbs_ShapeEnum.TopAbs_FACE,
+      TopAbs_ShapeEnum.TopAbs_SHAPE
+    );
+    while (faceExplorer.More()) {
+      const face = TopoDS.Face_1(faceExplorer.Current());
+      const edgeExp = new oc.TopExp_Explorer_2(
+        face,
+        TopAbs_ShapeEnum.TopAbs_EDGE,
+        TopAbs_ShapeEnum.TopAbs_SHAPE
+      );
+      while (edgeExp.More()) {
+        const edge = TopoDS.Edge_1(edgeExp.Current());
+        const hash: number = edge.HashCode(10_000_000);
+        if (!seenEdgeHashes.has(hash)) {
+          seenEdgeHashes.add(hash);
+          edgeFaceEntries.push({ edge, face });
+        }
+        edgeExp.Next();
+      }
+      faceExplorer.Next();
+    }
+
+    const bevel = new oc.BRepFilletAPI_MakeChamfer(baseShape);
+    const allowedSet = payload.edgeIndices && payload.edgeIndices.length > 0
+      ? new Set(payload.edgeIndices)
+      : null;
+    let bevelIdx = 0;
+    for (const { edge, face } of edgeFaceEntries) {
+      if (!allowedSet || allowedSet.has(bevelIdx)) {
+        try {
+          bevel.Add_3(payload.d1, payload.d2, edge, face);
+        } catch {
+          // arista no válida para bisel — saltar
+        }
+      }
+      bevelIdx++;
+    }
+
+    const beveledShape = bevel.Shape();
+    return rotateGeometry90(triangulateShape(beveledShape));
+  } catch (error) {
+    console.error('[CAD Worker] Bevel failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Ejecuta operación de media caña (cove — redondeo cóncavo en aristas).
+ * Aplica BRepFilletAPI_MakeFillet sobre todas las aristas del sólido con
+ * tipo de superficie QuasiAngular para el perfil cóncavo característico.
+ */
+function executeCove(payload: CovePayload): GeometryData {
+  if (!oc) throw new Error('OpenCascade not initialized');
+
+  const { TopAbs_ShapeEnum, TopoDS } = oc as any;
+
+  try {
+    let baseShape = buildShapeForBoolean(payload.source);
+    if (payload.sourceTranslation) {
+      const t = payload.sourceTranslation;
+      if (t.x !== 0 || t.y !== 0 || t.z !== 0) {
+        const trsf = new oc.gp_Trsf_1();
+        trsf.SetTranslation_1(new oc.gp_Vec_4(t.x, -t.z, t.y));
+        baseShape = new oc.BRepBuilderAPI_Transform_2(baseShape, trsf, false).Shape();
+      }
+    }
+    if (payload.sourceModifiers && payload.sourceModifiers.length > 0) {
+      baseShape = applyModifierChain(baseShape, payload.sourceModifiers);
+    }
+
+    const coveBuilder = new oc.BRepFilletAPI_MakeFillet(
+      baseShape,
+      (oc as any).ChFi3d_FilletShape.ChFi3d_QuasiAngular
+    );
+
+    const coveAllowedSet = payload.edgeIndices && payload.edgeIndices.length > 0
+      ? new Set(payload.edgeIndices)
+      : null;
+
+    const edgeExplorer = new oc.TopExp_Explorer_2(
+      baseShape,
+      TopAbs_ShapeEnum.TopAbs_EDGE,
+      TopAbs_ShapeEnum.TopAbs_SHAPE
+    );
+    let coveIdx = 0;
+    while (edgeExplorer.More()) {
+      if (!coveAllowedSet || coveAllowedSet.has(coveIdx)) {
+        const edge = TopoDS.Edge_1(edgeExplorer.Current());
+        coveBuilder.Add_2(payload.radius, edge);
+      }
+      coveIdx++;
+      edgeExplorer.Next();
+    }
+
+    const coveShape = coveBuilder.Shape();
+    return rotateGeometry90(triangulateShape(coveShape));
+  } catch (error) {
+    console.error('[CAD Worker] Cove failed:', error);
     throw error;
   }
 }
@@ -483,6 +765,9 @@ function executeShell(payload: ShellPayload): GeometryData {
         trsf.SetTranslation_1(new oc.gp_Vec_4(t.x, -t.z, t.y));
         baseShape = new oc.BRepBuilderAPI_Transform_2(baseShape, trsf, false).Shape();
       }
+    }
+    if (payload.sourceModifiers && payload.sourceModifiers.length > 0) {
+      baseShape = applyModifierChain(baseShape, payload.sourceModifiers);
     }
 
     // Encontrar la cara con mayor coordenada Z media (cara superior del extruido)
@@ -538,7 +823,7 @@ function executeShell(payload: ShellPayload): GeometryData {
     );
 
     const shellShape = shellMaker.Shape();
-    return triangulateShape(shellShape);
+    return rotateGeometry90(triangulateShape(shellShape));
   } catch (error) {
     console.error('[CAD Worker] Shell failed:', error);
     throw error;
@@ -676,6 +961,9 @@ function executeDraft(payload: DraftPayload): GeometryData {
         shape = new oc.BRepBuilderAPI_Transform_2(shape, trsf, false).Shape();
       }
     }
+    if (payload.sourceModifiers && payload.sourceModifiers.length > 0) {
+      shape = applyModifierChain(shape, payload.sourceModifiers);
+    }
     return shape;
   };
 
@@ -705,14 +993,14 @@ function executeDraft(payload: DraftPayload): GeometryData {
 
     if (!drafter.IsDone()) {
       // Si OCC no puede aplicar draft, devolver la extrusión base
-      return triangulateShape(baseShape);
+      return rotateGeometry90(triangulateShape(baseShape));
     }
 
-    return triangulateShape(drafter.Shape());
+    return rotateGeometry90(triangulateShape(drafter.Shape()));
   } catch (error) {
     console.error('[CAD Worker] Draft failed:', error);
     // Fallback: devolver shape sin draft
-    return triangulateShape(buildBase());
+    return rotateGeometry90(triangulateShape(buildBase()));
   }
 }
 
@@ -732,6 +1020,9 @@ function executeOffset(payload: OffsetPayload): GeometryData {
         trsf.SetTranslation_1(new oc.gp_Vec_4(t.x, -t.z, t.y));
         shape = new oc.BRepBuilderAPI_Transform_2(shape, trsf, false).Shape();
       }
+    }
+    if (payload.sourceModifiers && payload.sourceModifiers.length > 0) {
+      shape = applyModifierChain(shape, payload.sourceModifiers);
     }
     return shape;
   };
@@ -755,14 +1046,14 @@ function executeOffset(payload: OffsetPayload): GeometryData {
     if (!offsetMaker.IsDone()) {
       // Fallback: devolver shape original si el offset falla
       console.warn('[CAD Worker] Offset not done, returning base shape');
-      return triangulateShape(baseShape);
+      return rotateGeometry90(triangulateShape(baseShape));
     }
 
-    return triangulateShape(offsetMaker.Shape());
+    return rotateGeometry90(triangulateShape(offsetMaker.Shape()));
   } catch (error) {
     console.error('[CAD Worker] Offset failed:', error);
     // Fallback: devolver shape sin offset
-    return triangulateShape(buildBase());
+    return rotateGeometry90(triangulateShape(buildBase()));
   }
 }
 
@@ -772,6 +1063,154 @@ function executeOffset(payload: OffsetPayload): GeometryData {
  * `rotateGeometry90` el resultado quede en el mismo espacio Three.js Y-up
  * que el renderizado normal de cada primitiva.
  */
+
+// ─── Helpers de modificador: operan directamente sobre un shape OCC ───────────
+
+function applyFilletToShape(shape: any, radius: number, edgeIndices?: number[]): any {
+  const { TopAbs_ShapeEnum, TopoDS } = oc as any;
+  const filleter = new oc.BRepFilletAPI_MakeFillet(shape, (oc as any).ChFi3d_FilletShape.ChFi3d_Rational);
+  const allowed = edgeIndices && edgeIndices.length > 0 ? new Set(edgeIndices) : null;
+  const exp = new oc.TopExp_Explorer_2(shape, TopAbs_ShapeEnum.TopAbs_EDGE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+  let i = 0;
+  while (exp.More()) {
+    if (!allowed || allowed.has(i)) filleter.Add_2(radius, TopoDS.Edge_1(exp.Current()));
+    i++;
+    exp.Next();
+  }
+  return filleter.Shape();
+}
+
+function applyChamferToShape(shape: any, distance: number, edgeIndices?: number[]): any {
+  const { TopAbs_ShapeEnum, TopoDS } = oc as any;
+  const chamferer = new oc.BRepFilletAPI_MakeChamfer(shape);
+  const allowed = edgeIndices && edgeIndices.length > 0 ? new Set(edgeIndices) : null;
+  const exp = new oc.TopExp_Explorer_2(shape, TopAbs_ShapeEnum.TopAbs_EDGE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+  let i = 0;
+  while (exp.More()) {
+    if (!allowed || allowed.has(i)) chamferer.Add_2(distance, TopoDS.Edge_1(exp.Current()));
+    i++;
+    exp.Next();
+  }
+  return chamferer.Shape();
+}
+
+function applyBevelToShape(shape: any, d1: number, d2: number, edgeIndices?: number[]): any {
+  const { TopAbs_ShapeEnum, TopoDS } = oc as any;
+  const entries: Array<{ edge: any; face: any }> = [];
+  const seen = new Set<number>();
+  const faceExp = new oc.TopExp_Explorer_2(shape, TopAbs_ShapeEnum.TopAbs_FACE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+  while (faceExp.More()) {
+    const face = TopoDS.Face_1(faceExp.Current());
+    const edgeExp = new oc.TopExp_Explorer_2(face, TopAbs_ShapeEnum.TopAbs_EDGE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+    while (edgeExp.More()) {
+      const edge = TopoDS.Edge_1(edgeExp.Current());
+      const h: number = edge.HashCode(10_000_000);
+      if (!seen.has(h)) { seen.add(h); entries.push({ edge, face }); }
+      edgeExp.Next();
+    }
+    faceExp.Next();
+  }
+  const bevel = new oc.BRepFilletAPI_MakeChamfer(shape);
+  const allowed = edgeIndices && edgeIndices.length > 0 ? new Set(edgeIndices) : null;
+  let i = 0;
+  for (const { edge, face } of entries) {
+    if (!allowed || allowed.has(i)) { try { bevel.Add_3(d1, d2, edge, face); } catch { /* skip */ } }
+    i++;
+  }
+  return bevel.Shape();
+}
+
+function applyCoveToShape(shape: any, radius: number, edgeIndices?: number[]): any {
+  const { TopAbs_ShapeEnum, TopoDS } = oc as any;
+  const builder = new oc.BRepFilletAPI_MakeFillet(shape, (oc as any).ChFi3d_FilletShape.ChFi3d_QuasiAngular);
+  const allowed = edgeIndices && edgeIndices.length > 0 ? new Set(edgeIndices) : null;
+  const exp = new oc.TopExp_Explorer_2(shape, TopAbs_ShapeEnum.TopAbs_EDGE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+  let i = 0;
+  while (exp.More()) {
+    if (!allowed || allowed.has(i)) builder.Add_2(radius, TopoDS.Edge_1(exp.Current()));
+    i++;
+    exp.Next();
+  }
+  return builder.Shape();
+}
+
+function applyShellToShape(shape: any, thickness: number): any {
+  const { TopAbs_ShapeEnum, TopoDS, BRep_Tool, TopLoc_Location_1: TopLoc_Location } = oc as any;
+  new oc.BRepMesh_IncrementalMesh_2(shape, 0.1, false, 0.5, true);
+  let topFace: any = null;
+  let maxZ = -Infinity;
+  const faceExp = new oc.TopExp_Explorer_2(shape, TopAbs_ShapeEnum.TopAbs_FACE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+  while (faceExp.More()) {
+    const face = TopoDS.Face_1(faceExp.Current());
+    const loc = new TopLoc_Location();
+    const triHandle = BRep_Tool.Triangulation(face, loc, 0);
+    if (!triHandle.IsNull()) {
+      const tri = triHandle.get();
+      let sumZ = 0;
+      const n = tri.NbNodes();
+      for (let k = 1; k <= n; k++) sumZ += tri.Node(k).Z();
+      const avg = sumZ / n;
+      if (avg > maxZ) { maxZ = avg; topFace = face; }
+    }
+    faceExp.Next();
+  }
+  if (!topFace) throw new Error('applyShellToShape: could not find top face');
+  const facesToRemove = new (oc as any).TopTools_ListOfShape();
+  facesToRemove.Append_1(topFace);
+  const shellMaker = new oc.BRepOffsetAPI_MakeThickSolid();
+  shellMaker.MakeThickSolidByJoin(shape, facesToRemove, -thickness, 1e-3,
+    (oc as any).BRepOffset_Mode.BRepOffset_Skin, false, false,
+    (oc as any).GeomAbs_JoinType.GeomAbs_Arc, false, new oc.Message_ProgressRange_1());
+  return shellMaker.Shape();
+}
+
+function applyDraftToShape(shape: any, angle: number, _neutralPlane: 'XY' | 'XZ' | 'YZ'): any {
+  const { TopAbs_ShapeEnum, TopoDS } = oc as any;
+  const angleRad = (angle * Math.PI) / 180;
+  const pullDir = new oc.gp_Dir_4(0, 0, 1);
+  const neutralPln = new oc.gp_Pln_2(new oc.gp_Ax3_4(new oc.gp_Pnt_3(0, 0, 0), pullDir));
+  const drafter = new oc.BRepOffsetAPI_DraftAngle_2(shape);
+  const faceExp = new oc.TopExp_Explorer_2(shape, TopAbs_ShapeEnum.TopAbs_FACE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+  while (faceExp.More()) {
+    drafter.Add(TopoDS.Face_1(faceExp.Current()), pullDir, angleRad, neutralPln);
+    faceExp.Next();
+  }
+  if (!drafter.IsDone()) return shape;
+  return drafter.Shape();
+}
+
+function applyOffsetToShape(shape: any, distance: number): any {
+  const offsetMaker = new oc.BRepOffsetAPI_MakeOffsetShape();
+  offsetMaker.PerformByJoin(shape, distance, 1e-3,
+    (oc as any).BRepOffset_Mode.BRepOffset_Skin, false, false,
+    (oc as any).GeomAbs_JoinType.GeomAbs_Arc, false, new oc.Message_ProgressRange_1());
+  if (!offsetMaker.IsDone()) return shape;
+  return offsetMaker.Shape();
+}
+
+/** Aplica una cadena de modificadores previos a un shape OCC en orden */
+function applyModifierChain(shape: any, modifiers: AppliedModifier[]): any {
+  let result = shape;
+  for (const mod of modifiers) {
+    try {
+      switch (mod.type) {
+        case 'fillet':  result = applyFilletToShape(result, mod.params.radius!, mod.edgeIndices); break;
+        case 'chamfer': result = applyChamferToShape(result, mod.params.distance!, mod.edgeIndices); break;
+        case 'bevel':   result = applyBevelToShape(result, mod.params.d1!, mod.params.d2!, mod.edgeIndices); break;
+        case 'cove':    result = applyCoveToShape(result, mod.params.radius!, mod.edgeIndices); break;
+        case 'shell':   result = applyShellToShape(result, mod.params.thickness!); break;
+        case 'draft':   result = applyDraftToShape(result, mod.params.angle!, mod.params.neutralPlane ?? 'XY'); break;
+        case 'offset':  result = applyOffsetToShape(result, mod.params.distance!); break;
+      }
+    } catch (err) {
+      console.warn('[CAD Worker] applyModifierChain step failed, skipping:', mod.type, err);
+    }
+  }
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function buildShapeForBoolean(desc: BooleanShapeDescriptor): any {
   if (!oc) throw new Error('OpenCascade not initialized');
 
@@ -1166,6 +1605,33 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
 
         const geometry = executeOffset(payload as OffsetPayload);
         self.postMessage({ id, type: 'offset', success: true, geometry });
+        break;
+      }
+
+      case 'bevel': {
+        if (!isInitialized) {
+          throw new Error('OpenCascade not initialized. Call init first.');
+        }
+        const geometry = executeBevel(payload as BevelPayload);
+        self.postMessage({ id, type: 'bevel', success: true, geometry });
+        break;
+      }
+
+      case 'cove': {
+        if (!isInitialized) {
+          throw new Error('OpenCascade not initialized. Call init first.');
+        }
+        const geometry = executeCove(payload as CovePayload);
+        self.postMessage({ id, type: 'cove', success: true, geometry });
+        break;
+      }
+
+      case 'get_edges': {
+        if (!isInitialized) {
+          throw new Error('OpenCascade not initialized. Call init first.');
+        }
+        const edges = executeGetEdges(payload as GetEdgesPayload);
+        self.postMessage({ id, type: 'get_edges', success: true, edges });
         break;
       }
 

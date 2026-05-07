@@ -11,6 +11,7 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import { FeatureType } from '@stl-model/shared-types';
+import type { DisplayUnit } from '@/lib/cad/unitConversion';
 import { useSketchStore } from './sketchStore';
 import type {
   EntityId,
@@ -19,6 +20,8 @@ import type {
   RevolveFeature,
   FilletFeature,
   ChamferFeature,
+  BevelFeature,
+  CoveFeature,
   ShellFeature,
   SweepFeature,
   LoftFeature,
@@ -177,6 +180,9 @@ interface FeatureStoreState {
   placementMode: { type: string } | null;
   placementPosition: { x: number; y: number; z: number } | null;
   placementRotation: { x: number; y: number; z: number };
+
+  // Unidades de medida del proyecto
+  displayUnit: DisplayUnit;
 }
 
 /**
@@ -209,9 +215,9 @@ interface FeatureStoreActions {
   importModel: (filename: string, format: 'stl' | 'obj', geometry: BufferGeometry) => EntityId;
 
   // Fillet y Chamfer (US-003/004)
-  createFillet: (sourceFeatureId: EntityId, radius: number) => Promise<EntityId>;
+  createFillet: (sourceFeatureId: EntityId, radius: number, edgeIndices?: number[]) => Promise<EntityId>;
 
-  createChamfer: (sourceFeatureId: EntityId, chamferDistance: number) => Promise<EntityId>;
+  createChamfer: (sourceFeatureId: EntityId, chamferDistance: number, edgeIndices?: number[]) => Promise<EntityId>;
 
   // Shell (US-010)
   createShell: (sourceFeatureId: EntityId, thickness: number) => Promise<EntityId>;
@@ -268,6 +274,15 @@ interface FeatureStoreActions {
   // Offset (desplazamiento de superficie, FUNC-009)
   createOffset: (sourceFeatureId: EntityId, distance: number) => Promise<EntityId>;
 
+  // Bevel (bisel asimétrico — chaflán con dos distancias distintas)
+  createBevel: (sourceFeatureId: EntityId, d1: number, d2: number, edgeIndices?: number[]) => Promise<EntityId>;
+
+  // Cove (media caña — redondeo cóncavo)
+  createCove: (sourceFeatureId: EntityId, radius: number, edgeIndices?: number[]) => Promise<EntityId>;
+
+  /** Obtiene los segmentos de arista BRep de un feature para la selección visual en el viewport. */
+  getEdgesForFeature: (sourceFeatureId: EntityId) => Promise<import('./uiStore').EdgeInfo[]>;
+
   // Primitivas 3D (con posición/rotación opcional via click-to-place)
   createPrimitiveBox: (
     width: number,
@@ -316,6 +331,9 @@ interface FeatureStoreActions {
 
   // Reset
   reset: () => void;
+
+  // Unidades
+  setDisplayUnit: (unit: DisplayUnit) => void;
 }
 
 type FeatureStore = FeatureStoreState & FeatureStoreActions;
@@ -334,6 +352,7 @@ const initialState: FeatureStoreState = {
   placementMode: null,
   placementPosition: null,
   placementRotation: { x: 0, y: 0, z: 0 },
+  displayUnit: 'mm' as DisplayUnit,
 };
 
 /**
@@ -587,8 +606,7 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
 
   // ==================== Fillet (US-003) ====================
 
-  createFillet: async (sourceFeatureId, radius) => {
-    const featureId = nanoid();
+  createFillet: async (sourceFeatureId, radius, edgeIndices = []) => {
     const { features } = get();
 
     const sourceFeature = features.find(
@@ -611,12 +629,13 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
       const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
       const sourceTranslation = getFeatureTranslation(sourceFeature);
+      const existingModifiers = (sourceFeature as any).modifiers ?? [];
 
-      const geometryData = await worker.fillet(sourceDesc, sourceTranslation, radius);
+      const geometryData = await worker.fillet(sourceDesc, sourceTranslation, radius, edgeIndices.length > 0 ? edgeIndices : undefined, existingModifiers.length > 0 ? existingModifiers : undefined);
 
       set({ processingProgress: 80 });
 
-      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute } =
+      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute, Vector3 } =
         await import('three');
       const geometry = new BufferGeometry();
       geometry.setAttribute('position', new Float32BufferAttribute(geometryData.positions, 3));
@@ -624,22 +643,24 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       geometry.setIndex(new Uint32BufferAttribute(geometryData.indices, 1));
       geometry.computeVertexNormals();
 
+      geometry.computeBoundingBox();
+      const newCenter = new Vector3();
+      geometry.boundingBox!.getCenter(newCenter);
+      geometry.translate(-newCenter.x, -newCenter.y, -newCenter.z);
+      const newModifier = { type: 'fillet' as const, params: { radius }, edgeIndices: edgeIndices.length > 0 ? edgeIndices : undefined };
+      set((state) => ({
+        features: state.features.map((f) =>
+          f.id === sourceFeatureId
+            ? { ...f, position: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, geometryCenter: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, modifiers: [...existingModifiers, newModifier] }
+            : f
+        ),
+      }));
+
       set({ processingProgress: 90 });
 
-      const feature: FilletFeature = {
-        id: featureId,
-        type: FeatureType.FILLET,
-        name: `Fillet r${radius}mm`,
-        parentId: sourceFeatureId,
-        visible: true,
-        suppressed: false,
-        edges: [],
-        radius,
-      };
-
-      get().addFeature(feature, geometry);
+      get().updateGeometry(sourceFeatureId, geometry);
       set({ processingProgress: 100 });
-      return featureId;
+      return sourceFeatureId;
     } catch (error) {
       console.error('[Feature Store] Fillet failed:', error);
       throw error;
@@ -650,8 +671,7 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
 
   // ==================== Chamfer (US-004) ====================
 
-  createChamfer: async (sourceFeatureId, chamferDistance) => {
-    const featureId = nanoid();
+  createChamfer: async (sourceFeatureId, chamferDistance, edgeIndices = []) => {
     const { features } = get();
 
     const sourceFeature = features.find(
@@ -674,12 +694,13 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
       const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
       const sourceTranslation = getFeatureTranslation(sourceFeature);
+      const existingModifiers = (sourceFeature as any).modifiers ?? [];
 
-      const geometryData = await worker.chamfer(sourceDesc, sourceTranslation, chamferDistance);
+      const geometryData = await worker.chamfer(sourceDesc, sourceTranslation, chamferDistance, edgeIndices.length > 0 ? edgeIndices : undefined, existingModifiers.length > 0 ? existingModifiers : undefined);
 
       set({ processingProgress: 80 });
 
-      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute } =
+      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute, Vector3 } =
         await import('three');
       const geometry = new BufferGeometry();
       geometry.setAttribute('position', new Float32BufferAttribute(geometryData.positions, 3));
@@ -687,22 +708,24 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       geometry.setIndex(new Uint32BufferAttribute(geometryData.indices, 1));
       geometry.computeVertexNormals();
 
+      geometry.computeBoundingBox();
+      const newCenter = new Vector3();
+      geometry.boundingBox!.getCenter(newCenter);
+      geometry.translate(-newCenter.x, -newCenter.y, -newCenter.z);
+      const newModifier = { type: 'chamfer' as const, params: { distance: chamferDistance }, edgeIndices: edgeIndices.length > 0 ? edgeIndices : undefined };
+      set((state) => ({
+        features: state.features.map((f) =>
+          f.id === sourceFeatureId
+            ? { ...f, position: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, geometryCenter: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, modifiers: [...existingModifiers, newModifier] }
+            : f
+        ),
+      }));
+
       set({ processingProgress: 90 });
 
-      const feature: ChamferFeature = {
-        id: featureId,
-        type: FeatureType.CHAMFER,
-        name: `Chamfer ${chamferDistance}mm`,
-        parentId: sourceFeatureId,
-        visible: true,
-        suppressed: false,
-        edges: [],
-        distance: chamferDistance,
-      };
-
-      get().addFeature(feature, geometry);
+      get().updateGeometry(sourceFeatureId, geometry);
       set({ processingProgress: 100 });
-      return featureId;
+      return sourceFeatureId;
     } catch (error) {
       console.error('[Feature Store] Chamfer failed:', error);
       throw error;
@@ -714,7 +737,6 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
   // ==================== Shell (US-010) ====================
 
   createShell: async (sourceFeatureId, thickness) => {
-    const featureId = nanoid();
     const { features } = get();
 
     const sourceFeature = features.find(
@@ -737,12 +759,13 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
       const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
       const sourceTranslation = getFeatureTranslation(sourceFeature);
+      const existingModifiers = (sourceFeature as any).modifiers ?? [];
 
-      const geometryData = await worker.shell(sourceDesc, sourceTranslation, thickness);
+      const geometryData = await worker.shell(sourceDesc, sourceTranslation, thickness, existingModifiers.length > 0 ? existingModifiers : undefined);
 
       set({ processingProgress: 80 });
 
-      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute } =
+      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute, Vector3 } =
         await import('three');
       const geometry = new BufferGeometry();
       geometry.setAttribute('position', new Float32BufferAttribute(geometryData.positions, 3));
@@ -750,22 +773,24 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       geometry.setIndex(new Uint32BufferAttribute(geometryData.indices, 1));
       geometry.computeVertexNormals();
 
+      geometry.computeBoundingBox();
+      const newCenter = new Vector3();
+      geometry.boundingBox!.getCenter(newCenter);
+      geometry.translate(-newCenter.x, -newCenter.y, -newCenter.z);
+      const newModifier = { type: 'shell' as const, params: { thickness } };
+      set((state) => ({
+        features: state.features.map((f) =>
+          f.id === sourceFeatureId
+            ? { ...f, position: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, geometryCenter: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, modifiers: [...existingModifiers, newModifier] }
+            : f
+        ),
+      }));
+
       set({ processingProgress: 90 });
 
-      const feature: ShellFeature = {
-        id: featureId,
-        type: FeatureType.SHELL,
-        name: `Shell ${thickness}mm`,
-        parentId: sourceFeatureId,
-        visible: true,
-        suppressed: false,
-        facesToRemove: [],
-        thickness,
-      };
-
-      get().addFeature(feature, geometry);
+      get().updateGeometry(sourceFeatureId, geometry);
       set({ processingProgress: 100 });
-      return featureId;
+      return sourceFeatureId;
     } catch (error) {
       console.error('[Feature Store] Shell failed:', error);
       throw error;
@@ -1141,7 +1166,6 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
   // ==================== Draft (FUNC-010) ====================
 
   createDraft: async (sourceFeatureId, angle, neutralPlane = 'XY') => {
-    const featureId = nanoid();
     const { features } = get();
 
     const sourceFeature = features.find(
@@ -1168,12 +1192,13 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
       const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
       const sourceTranslation = getFeatureTranslation(sourceFeature);
+      const existingModifiers = (sourceFeature as any).modifiers ?? [];
 
-      const geometryData = await worker.draft(sourceDesc, sourceTranslation, angle, neutralPlane);
+      const geometryData = await worker.draft(sourceDesc, sourceTranslation, angle, neutralPlane, existingModifiers.length > 0 ? existingModifiers : undefined);
 
       set({ processingProgress: 80 });
 
-      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute } =
+      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute, Vector3 } =
         await import('three');
       const geometry = new BufferGeometry();
       geometry.setAttribute('position', new Float32BufferAttribute(geometryData.positions, 3));
@@ -1181,23 +1206,24 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       geometry.setIndex(new Uint32BufferAttribute(geometryData.indices, 1));
       geometry.computeVertexNormals();
 
+      geometry.computeBoundingBox();
+      const newCenter = new Vector3();
+      geometry.boundingBox!.getCenter(newCenter);
+      geometry.translate(-newCenter.x, -newCenter.y, -newCenter.z);
+      const newModifier = { type: 'draft' as const, params: { angle, neutralPlane } };
+      set((state) => ({
+        features: state.features.map((f) =>
+          f.id === sourceFeatureId
+            ? { ...f, position: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, geometryCenter: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, modifiers: [...existingModifiers, newModifier] }
+            : f
+        ),
+      }));
+
       set({ processingProgress: 90 });
 
-      const feature: DraftFeature = {
-        id: featureId,
-        type: FeatureType.DRAFT,
-        name: `Draft ${angle}° (${neutralPlane})`,
-        parentId: sourceFeatureId,
-        visible: true,
-        suppressed: false,
-        sourceFeatureId,
-        angle,
-        neutralPlane,
-      };
-
-      get().addFeature(feature, geometry);
+      get().updateGeometry(sourceFeatureId, geometry);
       set({ processingProgress: 100 });
-      return featureId;
+      return sourceFeatureId;
     } catch (error) {
       console.error('[Feature Store] Draft failed:', error);
       throw error;
@@ -1209,7 +1235,6 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
   // ==================== Offset (FUNC-009) ====================
 
   createOffset: async (sourceFeatureId, distance) => {
-    const featureId = nanoid();
     const { features } = get();
 
     const sourceFeature = features.find(
@@ -1232,12 +1257,13 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
       const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
       const sourceTranslation = getFeatureTranslation(sourceFeature);
+      const existingModifiers = (sourceFeature as any).modifiers ?? [];
 
-      const geometryData = await worker.offset(sourceDesc, sourceTranslation, distance);
+      const geometryData = await worker.offset(sourceDesc, sourceTranslation, distance, existingModifiers.length > 0 ? existingModifiers : undefined);
 
       set({ processingProgress: 80 });
 
-      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute } =
+      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute, Vector3 } =
         await import('three');
       const geometry = new BufferGeometry();
       geometry.setAttribute('position', new Float32BufferAttribute(geometryData.positions, 3));
@@ -1245,28 +1271,179 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       geometry.setIndex(new Uint32BufferAttribute(geometryData.indices, 1));
       geometry.computeVertexNormals();
 
+      geometry.computeBoundingBox();
+      const newCenter = new Vector3();
+      geometry.boundingBox!.getCenter(newCenter);
+      geometry.translate(-newCenter.x, -newCenter.y, -newCenter.z);
+      const newModifier = { type: 'offset' as const, params: { distance } };
+      set((state) => ({
+        features: state.features.map((f) =>
+          f.id === sourceFeatureId
+            ? { ...f, position: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, geometryCenter: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, modifiers: [...existingModifiers, newModifier] }
+            : f
+        ),
+      }));
+
       set({ processingProgress: 90 });
 
-      const feature: OffsetFeature = {
-        id: featureId,
-        type: FeatureType.OFFSET,
-        name: `Offset ${distance > 0 ? '+' : ''}${distance}mm`,
-        parentId: sourceFeatureId,
-        visible: true,
-        suppressed: false,
-        sourceFeatureId,
-        distance,
-      };
-
-      get().addFeature(feature, geometry);
+      get().updateGeometry(sourceFeatureId, geometry);
       set({ processingProgress: 100 });
-      return featureId;
+      return sourceFeatureId;
     } catch (error) {
       console.error('[Feature Store] Offset failed:', error);
       throw error;
     } finally {
       set({ isProcessing: false, processingProgress: 0 });
     }
+  },
+
+  // ==================== Bevel (bisel asimétrico) ====================
+
+  createBevel: async (sourceFeatureId, d1, d2, edgeIndices = []) => {
+    const { features } = get();
+
+    const sourceFeature = features.find(
+      (f) => f.id === sourceFeatureId && (SOLID_FEATURE_TYPES as readonly string[]).includes(f.type)
+    );
+    if (!sourceFeature) {
+      throw new Error(`Source solid feature not found: ${sourceFeatureId}`);
+    }
+
+    try {
+      set({ isProcessing: true, processingProgress: 0 });
+
+      const { getCADWorker } = await import('../lib/cad/cadWorkerClient');
+      const worker = getCADWorker();
+
+      set({ processingProgress: 30 });
+      await worker.initialize();
+      set({ processingProgress: 50 });
+
+      const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
+      const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
+      const sourceTranslation = getFeatureTranslation(sourceFeature);
+      const existingModifiers = (sourceFeature as any).modifiers ?? [];
+
+      const geometryData = await worker.bevel(sourceDesc, sourceTranslation, d1, d2, edgeIndices.length > 0 ? edgeIndices : undefined, existingModifiers.length > 0 ? existingModifiers : undefined);
+
+      set({ processingProgress: 80 });
+
+      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute, Vector3 } =
+        await import('three');
+      const geometry = new BufferGeometry();
+      geometry.setAttribute('position', new Float32BufferAttribute(geometryData.positions, 3));
+      geometry.setAttribute('normal', new Float32BufferAttribute(geometryData.normals, 3));
+      geometry.setIndex(new Uint32BufferAttribute(geometryData.indices, 1));
+      geometry.computeVertexNormals();
+
+      geometry.computeBoundingBox();
+      const newCenter = new Vector3();
+      geometry.boundingBox!.getCenter(newCenter);
+      geometry.translate(-newCenter.x, -newCenter.y, -newCenter.z);
+      const newModifier = { type: 'bevel' as const, params: { d1, d2 }, edgeIndices: edgeIndices.length > 0 ? edgeIndices : undefined };
+      set((state) => ({
+        features: state.features.map((f) =>
+          f.id === sourceFeatureId
+            ? { ...f, position: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, geometryCenter: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, modifiers: [...existingModifiers, newModifier] }
+            : f
+        ),
+      }));
+
+      set({ processingProgress: 90 });
+
+      get().updateGeometry(sourceFeatureId, geometry);
+      set({ processingProgress: 100 });
+      return sourceFeatureId;
+    } catch (error) {
+      console.error('[Feature Store] Bevel failed:', error);
+      throw error;
+    } finally {
+      set({ isProcessing: false, processingProgress: 0 });
+    }
+  },
+
+  // ==================== Cove (media caña) ====================
+
+  createCove: async (sourceFeatureId, radius, edgeIndices = []) => {
+    const { features } = get();
+
+    const sourceFeature = features.find(
+      (f) => f.id === sourceFeatureId && (SOLID_FEATURE_TYPES as readonly string[]).includes(f.type)
+    );
+    if (!sourceFeature) {
+      throw new Error(`Source solid feature not found: ${sourceFeatureId}`);
+    }
+
+    try {
+      set({ isProcessing: true, processingProgress: 0 });
+
+      const { getCADWorker } = await import('../lib/cad/cadWorkerClient');
+      const worker = getCADWorker();
+
+      set({ processingProgress: 30 });
+      await worker.initialize();
+      set({ processingProgress: 50 });
+
+      const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
+      const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
+      const sourceTranslation = getFeatureTranslation(sourceFeature);
+      const existingModifiers = (sourceFeature as any).modifiers ?? [];
+
+      const geometryData = await worker.cove(sourceDesc, sourceTranslation, radius, edgeIndices.length > 0 ? edgeIndices : undefined, existingModifiers.length > 0 ? existingModifiers : undefined);
+
+      set({ processingProgress: 80 });
+
+      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute, Vector3 } =
+        await import('three');
+      const geometry = new BufferGeometry();
+      geometry.setAttribute('position', new Float32BufferAttribute(geometryData.positions, 3));
+      geometry.setAttribute('normal', new Float32BufferAttribute(geometryData.normals, 3));
+      geometry.setIndex(new Uint32BufferAttribute(geometryData.indices, 1));
+      geometry.computeVertexNormals();
+
+      geometry.computeBoundingBox();
+      const newCenter = new Vector3();
+      geometry.boundingBox!.getCenter(newCenter);
+      geometry.translate(-newCenter.x, -newCenter.y, -newCenter.z);
+      const newModifier = { type: 'cove' as const, params: { radius }, edgeIndices: edgeIndices.length > 0 ? edgeIndices : undefined };
+      set((state) => ({
+        features: state.features.map((f) =>
+          f.id === sourceFeatureId
+            ? { ...f, position: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, geometryCenter: { x: newCenter.x, y: newCenter.y, z: newCenter.z }, modifiers: [...existingModifiers, newModifier] }
+            : f
+        ),
+      }));
+
+      set({ processingProgress: 90 });
+
+      get().updateGeometry(sourceFeatureId, geometry);
+      set({ processingProgress: 100 });
+      return sourceFeatureId;
+    } catch (error) {
+      console.error('[Feature Store] Cove failed:', error);
+      throw error;
+    } finally {
+      set({ isProcessing: false, processingProgress: 0 });
+    }
+  },
+
+  // ==================== getEdgesForFeature ====================
+
+  getEdgesForFeature: async (sourceFeatureId) => {
+    const { features } = get();
+    const sourceFeature = features.find(
+      (f) => f.id === sourceFeatureId && (SOLID_FEATURE_TYPES as readonly string[]).includes(f.type)
+    );
+    if (!sourceFeature) throw new Error(`Source solid feature not found: ${sourceFeatureId}`);
+
+    const { getCADWorker } = await import('../lib/cad/cadWorkerClient');
+    const worker = getCADWorker();
+    await worker.initialize();
+    const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
+    const sourceDesc = featureToDescriptor(sourceFeature, features, defaultCW, defaultCH);
+    const sourceTranslation = getFeatureTranslation(sourceFeature);
+    const existingModifiers = (sourceFeature as any).modifiers ?? [];
+    return worker.getEdges(sourceDesc, sourceTranslation, existingModifiers.length > 0 ? existingModifiers : undefined);
   },
 
   // ==================== Primitivas 3D ====================
@@ -1544,6 +1721,10 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
 
   setProcessing: (isProcessing, progress = 0) => {
     set({ isProcessing, processingProgress: progress });
+  },
+
+  setDisplayUnit: (unit) => {
+    set({ displayUnit: unit });
   },
 
   // ==================== Reset ====================

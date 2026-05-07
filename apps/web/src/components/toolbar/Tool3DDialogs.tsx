@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFeatureStore } from '@/stores/featureStore';
+import { toDisplay, fromDisplay, unitStep, unitMin } from '@/lib/cad/unitConversion';
 
 // ────────────────────────────
 // Shared modal wrapper
@@ -193,19 +195,20 @@ export function ExtrudeDialog({
   onClose: () => void;
   onApply: (distance: number, direction: 'positive' | 'negative' | 'both') => void;
 }) {
-  const [distance, setDistance] = useState(10);
+  const [distanceMm, setDistanceMm] = useState(10);
   const [direction, setDirection] = useState<'positive' | 'negative' | 'both'>('positive');
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Extrusión" open={open} onClose={onClose}>
       <div className="space-y-3">
         <NumberField
           label="Distancia"
-          value={distance}
-          onChange={setDistance}
-          min={0.1}
-          step={0.5}
-          unit="mm"
+          value={toDisplay(distanceMm, displayUnit)}
+          onChange={(v) => setDistanceMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
         />
         <SelectField
           label="Dirección"
@@ -220,7 +223,7 @@ export function ExtrudeDialog({
         <ActionButton
           label="Extruir"
           onClick={() => {
-            onApply(distance, direction);
+            onApply(distanceMm, direction);
             onClose();
           }}
         />
@@ -284,18 +287,19 @@ export function FilletDialog({
   onClose: () => void;
   onApply: (radius: number) => void;
 }) {
-  const [radius, setRadius] = useState(2);
+  const [radiusMm, setRadiusMm] = useState(2);
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Fillet (Redondeo)" open={open} onClose={onClose}>
       <div className="space-y-3">
         <NumberField
           label="Radio"
-          value={radius}
-          onChange={setRadius}
-          min={0.1}
-          step={0.5}
-          unit="mm"
+          value={toDisplay(radiusMm, displayUnit)}
+          onChange={(v) => setRadiusMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
         />
         <p className="text-xs text-muted-foreground">
           Se aplica a todas las aristas de la feature seleccionada.
@@ -303,7 +307,7 @@ export function FilletDialog({
         <ActionButton
           label="Aplicar Fillet"
           onClick={() => {
-            onApply(radius);
+            onApply(radiusMm);
             onClose();
           }}
         />
@@ -325,18 +329,19 @@ export function ChamferDialog({
   onClose: () => void;
   onApply: (distance: number) => void;
 }) {
-  const [distance, setDistance] = useState(2);
+  const [distanceMm, setDistanceMm] = useState(2);
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Chamfer (Chaflán)" open={open} onClose={onClose}>
       <div className="space-y-3">
         <NumberField
           label="Distancia"
-          value={distance}
-          onChange={setDistance}
-          min={0.1}
-          step={0.5}
-          unit="mm"
+          value={toDisplay(distanceMm, displayUnit)}
+          onChange={(v) => setDistanceMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
         />
         <p className="text-xs text-muted-foreground">
           Se aplica a todas las aristas de la feature seleccionada.
@@ -344,7 +349,7 @@ export function ChamferDialog({
         <ActionButton
           label="Aplicar Chamfer"
           onClick={() => {
-            onApply(distance);
+            onApply(distanceMm);
             onClose();
           }}
         />
@@ -366,18 +371,19 @@ export function ShellDialog({
   onClose: () => void;
   onApply: (thickness: number) => void;
 }) {
-  const [thickness, setThickness] = useState(1);
+  const [thicknessMm, setThicknessMm] = useState(1);
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Shell (Vaciado)" open={open} onClose={onClose}>
       <div className="space-y-3">
         <NumberField
           label="Espesor de pared"
-          value={thickness}
-          onChange={setThickness}
-          min={0.1}
-          step={0.5}
-          unit="mm"
+          value={toDisplay(thicknessMm, displayUnit)}
+          onChange={(v) => setThicknessMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
         />
         <p className="text-xs text-muted-foreground">
           Vacía el sólido dejando paredes del espesor indicado.
@@ -385,7 +391,7 @@ export function ShellDialog({
         <ActionButton
           label="Aplicar Shell"
           onClick={() => {
-            onApply(thickness);
+            onApply(thicknessMm);
             onClose();
           }}
         />
@@ -407,27 +413,28 @@ export function SweepDialog({
   onClose: () => void;
   onApply: (pathPoints: Array<{ x: number; y: number; z: number }>) => void;
 }) {
-  const [length, setLength] = useState(20);
-  const [curveHeight, setCurveHeight] = useState(10);
+  const [lengthMm, setLengthMm] = useState(20);
+  const [curveHeightMm, setCurveHeightMm] = useState(10);
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Sweep (Barrido)" open={open} onClose={onClose}>
       <div className="space-y-3">
         <NumberField
           label="Longitud"
-          value={length}
-          onChange={setLength}
-          min={1}
-          step={1}
-          unit="mm"
+          value={toDisplay(lengthMm, displayUnit)}
+          onChange={(v) => setLengthMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
         />
         <NumberField
           label="Altura de curva"
-          value={curveHeight}
-          onChange={setCurveHeight}
+          value={toDisplay(curveHeightMm, displayUnit)}
+          onChange={(v) => setCurveHeightMm(fromDisplay(v, displayUnit))}
           min={0}
-          step={1}
-          unit="mm"
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
         />
         <p className="text-xs text-muted-foreground">
           Barre el perfil del sketch activo a lo largo de una trayectoria.
@@ -437,8 +444,8 @@ export function SweepDialog({
           onClick={() => {
             const path = [
               { x: 0, y: 0, z: 0 },
-              { x: length / 2, y: curveHeight, z: 0 },
-              { x: length, y: 0, z: 0 },
+              { x: lengthMm / 2, y: curveHeightMm, z: 0 },
+              { x: lengthMm, y: 0, z: 0 },
             ];
             onApply(path);
             onClose();
@@ -462,28 +469,29 @@ export function LoftDialog({
   onClose: () => void;
   onApply: (heightBetween: number, topRadius: number, closed: boolean) => void;
 }) {
-  const [heightBetween, setHeightBetween] = useState(20);
-  const [topRadius, setTopRadius] = useState(5);
+  const [heightBetweenMm, setHeightBetweenMm] = useState(20);
+  const [topRadiusMm, setTopRadiusMm] = useState(5);
   const [closed, setClosed] = useState(false);
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Loft (Transición)" open={open} onClose={onClose}>
       <div className="space-y-3">
         <NumberField
           label="Distancia entre secciones"
-          value={heightBetween}
-          onChange={setHeightBetween}
-          min={1}
-          step={1}
-          unit="mm"
+          value={toDisplay(heightBetweenMm, displayUnit)}
+          onChange={(v) => setHeightBetweenMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
         />
         <NumberField
           label="Radio sección superior"
-          value={topRadius}
-          onChange={setTopRadius}
-          min={0.5}
-          step={0.5}
-          unit="mm"
+          value={toDisplay(topRadiusMm, displayUnit)}
+          onChange={(v) => setTopRadiusMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
         />
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -497,7 +505,7 @@ export function LoftDialog({
         <ActionButton
           label="Aplicar Loft"
           onClick={() => {
-            onApply(heightBetween, topRadius, closed);
+            onApply(heightBetweenMm, topRadiusMm, closed);
             onClose();
           }}
         />
@@ -687,8 +695,9 @@ export function LinearPatternDialog({
   ) => void;
 }) {
   const [dirAxis, setDirAxis] = useState<'X' | 'Y' | 'Z'>('X');
-  const [spacing, setSpacing] = useState(15);
+  const [spacingMm, setSpacingMm] = useState(15);
   const [instances, setInstances] = useState(3);
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Patrón Lineal" open={open} onClose={onClose}>
@@ -705,11 +714,11 @@ export function LinearPatternDialog({
         />
         <NumberField
           label="Espaciado"
-          value={spacing}
-          onChange={setSpacing}
-          min={1}
-          step={1}
-          unit="mm"
+          value={toDisplay(spacingMm, displayUnit)}
+          onChange={(v) => setSpacingMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
         />
         <NumberField
           label="Instancias"
@@ -727,7 +736,7 @@ export function LinearPatternDialog({
               y: dirAxis === 'Y' ? 1 : 0,
               z: dirAxis === 'Z' ? 1 : 0,
             };
-            onApply(dir, spacing, instances);
+            onApply(dir, spacingMm, instances);
             onClose();
           }}
         />
@@ -870,17 +879,18 @@ export function OffsetDialog({
   onClose: () => void;
   onApply: (distance: number) => void;
 }) {
-  const [distance, setDistance] = useState(2);
+  const [distanceMm, setDistanceMm] = useState(2);
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Offset (Desplazamiento)" open={open} onClose={onClose}>
       <div className="space-y-3">
         <NumberField
           label="Distancia"
-          value={distance}
-          onChange={setDistance}
-          step={0.5}
-          unit="mm"
+          value={toDisplay(distanceMm, displayUnit)}
+          onChange={(v) => setDistanceMm(fromDisplay(v, displayUnit))}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
         />
         <p className="text-xs text-muted-foreground">
           Positivo: hacia afuera. Negativo: hacia adentro. Se aplica a todas las caras de la feature
@@ -889,7 +899,7 @@ export function OffsetDialog({
         <ActionButton
           label="Aplicar Offset"
           onClick={() => {
-            onApply(distance);
+            onApply(distanceMm);
             onClose();
           }}
         />
@@ -915,10 +925,11 @@ export function BoxDialog({
   position?: { x: number; y: number; z: number } | null;
   onOrientationChange?: (rotation: { x: number; y: number; z: number }) => void;
 }) {
-  const [width, setWidth] = useState(10);
-  const [height, setHeight] = useState(10);
-  const [depth, setDepth] = useState(10);
+  const [widthMm, setWidthMm] = useState(10);
+  const [heightMm, setHeightMm] = useState(10);
+  const [depthMm, setDepthMm] = useState(10);
   const [orientation, setOrientation] = useState<OrientationPreset>('up_y');
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Cubo" open={open} onClose={onClose}>
@@ -931,27 +942,13 @@ export function BoxDialog({
             onOrientationChange?.(rot);
           }}
         />
-        <NumberField label="Ancho" value={width} onChange={setWidth} min={0.1} step={1} unit="mm" />
-        <NumberField
-          label="Alto"
-          value={height}
-          onChange={setHeight}
-          min={0.1}
-          step={1}
-          unit="mm"
-        />
-        <NumberField
-          label="Profundidad"
-          value={depth}
-          onChange={setDepth}
-          min={0.1}
-          step={1}
-          unit="mm"
-        />
+        <NumberField label="Ancho" value={toDisplay(widthMm, displayUnit)} onChange={(v) => setWidthMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
+        <NumberField label="Alto" value={toDisplay(heightMm, displayUnit)} onChange={(v) => setHeightMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
+        <NumberField label="Profundidad" value={toDisplay(depthMm, displayUnit)} onChange={(v) => setDepthMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
         <ActionButton
           label="Crear Cubo"
           onClick={() => {
-            onApply(width, height, depth);
+            onApply(widthMm, heightMm, depthMm);
             onClose();
           }}
         />
@@ -977,8 +974,9 @@ export function SphereDialog({
   position?: { x: number; y: number; z: number } | null;
   onOrientationChange?: (rotation: { x: number; y: number; z: number }) => void;
 }) {
-  const [radius, setRadius] = useState(5);
+  const [radiusMm, setRadiusMm] = useState(5);
   const [orientation, setOrientation] = useState<OrientationPreset>('up_y');
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Esfera" open={open} onClose={onClose}>
@@ -993,16 +991,16 @@ export function SphereDialog({
         />
         <NumberField
           label="Radio"
-          value={radius}
-          onChange={setRadius}
-          min={0.1}
-          step={0.5}
-          unit="mm"
+          value={toDisplay(radiusMm, displayUnit)}
+          onChange={(v) => setRadiusMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
         />
         <ActionButton
           label="Crear Esfera"
           onClick={() => {
-            onApply(radius);
+            onApply(radiusMm);
             onClose();
           }}
         />
@@ -1028,9 +1026,10 @@ export function CylinderDialog({
   position?: { x: number; y: number; z: number } | null;
   onOrientationChange?: (rotation: { x: number; y: number; z: number }) => void;
 }) {
-  const [radius, setRadius] = useState(5);
-  const [height, setHeight] = useState(10);
+  const [radiusMm, setRadiusMm] = useState(5);
+  const [heightMm, setHeightMm] = useState(10);
   const [orientation, setOrientation] = useState<OrientationPreset>('up_y');
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Cilindro" open={open} onClose={onClose}>
@@ -1043,26 +1042,12 @@ export function CylinderDialog({
             onOrientationChange?.(rot);
           }}
         />
-        <NumberField
-          label="Radio"
-          value={radius}
-          onChange={setRadius}
-          min={0.1}
-          step={0.5}
-          unit="mm"
-        />
-        <NumberField
-          label="Altura"
-          value={height}
-          onChange={setHeight}
-          min={0.1}
-          step={1}
-          unit="mm"
-        />
+        <NumberField label="Radio" value={toDisplay(radiusMm, displayUnit)} onChange={(v) => setRadiusMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
+        <NumberField label="Altura" value={toDisplay(heightMm, displayUnit)} onChange={(v) => setHeightMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
         <ActionButton
           label="Crear Cilindro"
           onClick={() => {
-            onApply(radius, height);
+            onApply(radiusMm, heightMm);
             onClose();
           }}
         />
@@ -1088,10 +1073,11 @@ export function ConeDialog({
   position?: { x: number; y: number; z: number } | null;
   onOrientationChange?: (rotation: { x: number; y: number; z: number }) => void;
 }) {
-  const [baseRadius, setBaseRadius] = useState(5);
-  const [topRadius, setTopRadius] = useState(0);
-  const [height, setHeight] = useState(10);
+  const [baseRadiusMm, setBaseRadiusMm] = useState(5);
+  const [topRadiusMm, setTopRadiusMm] = useState(0);
+  const [heightMm, setHeightMm] = useState(10);
   const [orientation, setOrientation] = useState<OrientationPreset>('up_y');
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Cono" open={open} onClose={onClose}>
@@ -1104,35 +1090,14 @@ export function ConeDialog({
             onOrientationChange?.(rot);
           }}
         />
-        <NumberField
-          label="Radio base"
-          value={baseRadius}
-          onChange={setBaseRadius}
-          min={0}
-          step={0.5}
-          unit="mm"
-        />
-        <NumberField
-          label="Radio superior"
-          value={topRadius}
-          onChange={setTopRadius}
-          min={0}
-          step={0.5}
-          unit="mm"
-        />
-        <NumberField
-          label="Altura"
-          value={height}
-          onChange={setHeight}
-          min={0.1}
-          step={1}
-          unit="mm"
-        />
+        <NumberField label="Radio base" value={toDisplay(baseRadiusMm, displayUnit)} onChange={(v) => setBaseRadiusMm(fromDisplay(v, displayUnit))} min={0} step={unitStep(displayUnit)} unit={displayUnit} />
+        <NumberField label="Radio superior" value={toDisplay(topRadiusMm, displayUnit)} onChange={(v) => setTopRadiusMm(fromDisplay(v, displayUnit))} min={0} step={unitStep(displayUnit)} unit={displayUnit} />
+        <NumberField label="Altura" value={toDisplay(heightMm, displayUnit)} onChange={(v) => setHeightMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
         <p className="text-xs text-muted-foreground">Radio superior = 0 para un cono puntiagudo.</p>
         <ActionButton
           label="Crear Cono"
           onClick={() => {
-            onApply(baseRadius, topRadius, height);
+            onApply(baseRadiusMm, topRadiusMm, heightMm);
             onClose();
           }}
         />
@@ -1158,9 +1123,10 @@ export function TorusDialog({
   position?: { x: number; y: number; z: number } | null;
   onOrientationChange?: (rotation: { x: number; y: number; z: number }) => void;
 }) {
-  const [majorRadius, setMajorRadius] = useState(10);
-  const [minorRadius, setMinorRadius] = useState(3);
+  const [majorRadiusMm, setMajorRadiusMm] = useState(10);
+  const [minorRadiusMm, setMinorRadiusMm] = useState(3);
   const [orientation, setOrientation] = useState<OrientationPreset>('up_y');
+  const displayUnit = useFeatureStore((s) => s.displayUnit);
 
   return (
     <Dialog title="Toroide" open={open} onClose={onClose}>
@@ -1173,29 +1139,108 @@ export function TorusDialog({
             onOrientationChange?.(rot);
           }}
         />
-        <NumberField
-          label="Radio mayor"
-          value={majorRadius}
-          onChange={setMajorRadius}
-          min={0.1}
-          step={1}
-          unit="mm"
-        />
-        <NumberField
-          label="Radio menor"
-          value={minorRadius}
-          onChange={setMinorRadius}
-          min={0.1}
-          step={0.5}
-          unit="mm"
-        />
+        <NumberField label="Radio mayor" value={toDisplay(majorRadiusMm, displayUnit)} onChange={(v) => setMajorRadiusMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
+        <NumberField label="Radio menor" value={toDisplay(minorRadiusMm, displayUnit)} onChange={(v) => setMinorRadiusMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
         <p className="text-xs text-muted-foreground">
           El radio menor debe ser menor que el radio mayor.
         </p>
         <ActionButton
           label="Crear Toroide"
           onClick={() => {
-            onApply(majorRadius, minorRadius);
+            onApply(majorRadiusMm, minorRadiusMm);
+            onClose();
+          }}
+        />
+      </div>
+    </Dialog>
+  );
+}
+
+// ────────────────────────────
+// Bevel Dialog
+// ────────────────────────────
+
+export function BevelDialog({
+  open,
+  onClose,
+  onApply,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onApply: (d1: number, d2: number) => void;
+}) {
+  const [d1, setD1] = useState(3);
+  const [d2, setD2] = useState(1.5);
+
+  return (
+    <Dialog title="Bisel (Bevel asimétrico)" open={open} onClose={onClose}>
+      <div className="space-y-3">
+        <NumberField
+          label="Distancia 1"
+          value={d1}
+          onChange={setD1}
+          min={0.1}
+          step={0.5}
+          unit="mm"
+        />
+        <NumberField
+          label="Distancia 2"
+          value={d2}
+          onChange={setD2}
+          min={0.1}
+          step={0.5}
+          unit="mm"
+        />
+        <p className="text-xs text-muted-foreground">
+          Dos distancias distintas generan un chaflán asimétrico (ángulo variable).
+          Se aplica a todas las aristas de la feature seleccionada.
+        </p>
+        <ActionButton
+          label="Aplicar Bisel"
+          onClick={() => {
+            onApply(d1, d2);
+            onClose();
+          }}
+        />
+      </div>
+    </Dialog>
+  );
+}
+
+// ────────────────────────────
+// Cove Dialog (Media Caña)
+// ────────────────────────────
+
+export function CoveDialog({
+  open,
+  onClose,
+  onApply,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onApply: (radius: number) => void;
+}) {
+  const [radius, setRadius] = useState(2);
+
+  return (
+    <Dialog title="Media Caña (Cove)" open={open} onClose={onClose}>
+      <div className="space-y-3">
+        <NumberField
+          label="Radio"
+          value={radius}
+          onChange={setRadius}
+          min={0.1}
+          step={0.5}
+          unit="mm"
+        />
+        <p className="text-xs text-muted-foreground">
+          Genera una curva cóncava en las aristas — perfil de media caña (QuasiAngular).
+          Se aplica a todas las aristas de la feature seleccionada.
+        </p>
+        <ActionButton
+          label="Aplicar Media Caña"
+          onClick={() => {
+            onApply(radius);
             onClose();
           }}
         />

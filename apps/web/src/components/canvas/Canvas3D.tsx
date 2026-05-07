@@ -18,6 +18,7 @@ import SketchIn3D from './SketchIn3D';
 import ExtrudePreviewGizmo from './ExtrudePreviewGizmo';
 import ExtrudePreviewHUD from './ExtrudePreviewHUD';
 import BooleanSelectionHUD from './BooleanSelectionHUD';
+import type { EdgeInfo } from '../../stores/uiStore';
 
 export type ViewMode = 'shaded' | 'wireframe' | 'edges' | 'rendered';
 
@@ -135,6 +136,7 @@ function FeatureMeshes({
   const featureMaterials = useFeatureStore((state) => state.featureMaterials);
   const selectionToolActive = useUIStore((s) => s.selectionToolActive);
   const booleanWizard = useUIStore((s) => s.booleanWizard);
+  const modifierPickerActive = useUIStore((s) => !!s.modifierPicker);
   const setBooleanTarget = useUIStore((s) => s.setBooleanTarget);
   const cancelBooleanWizard = useUIStore((s) => s.cancelBooleanWizard);
   const createBoolean = useFeatureStore((s) => s.createBoolean);
@@ -203,6 +205,8 @@ function FeatureMeshes({
                 document.body.style.cursor = '';
               }}
               onClick={(e: ThreeEvent<MouseEvent>) => {
+                // ── Edge picker activo: bloquear selección normal ─────────
+                if (modifierPickerActive) return;
                 // ── Modo wizard booleano ──────────────────────────────────
                 if (booleanWizard) {
                   e.stopPropagation();
@@ -297,6 +301,104 @@ function SelectionGizmo({
       onMouseUp={() => onTransformingChange(false)}
       onObjectChange={handleObjectChange}
     />
+  );
+}
+
+/**
+ * Renderiza aristas del modificador activo como segmentos de línea clickeables.
+ * Las aristas seleccionadas se muestran en ámbar, las no seleccionadas en azul.
+ */
+// Cilindro orientado entre dos puntos para representar una arista BRep seleccionable.
+// Usa mesh en lugar de <line> porque Three.js no soporta raycasting en líneas finas.
+function EdgeCylinder({
+  start,
+  end,
+  isSelected,
+  onClick,
+}: {
+  start: { x: number; y: number; z: number };
+  end: { x: number; y: number; z: number };
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const sV = new THREE.Vector3(start.x, start.y, start.z);
+  const eV = new THREE.Vector3(end.x, end.y, end.z);
+  const mid = sV.clone().add(eV).multiplyScalar(0.5);
+  const dir = eV.clone().sub(sV);
+  const length = dir.length();
+  if (length < 1e-6) return null;
+
+  // Rotar el cilindro (eje por defecto: +Y) hacia la dirección de la arista
+  const quaternion = new THREE.Quaternion();
+  quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+
+  const color = isSelected ? '#f59e0b' : '#60a5fa';
+  const radius = 0.07;
+
+  return (
+    <mesh
+      position={[mid.x, mid.y, mid.z]}
+      quaternion={quaternion}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
+      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+    >
+      {/* Cilindro principal clicable */}
+      <cylinderGeometry args={[radius, radius, length, 8]} />
+      <meshBasicMaterial color={color} transparent opacity={isSelected ? 0.95 : 0.7} />
+    </mesh>
+  );
+}
+
+// Esfera en un extremo de arista para selección de vértice
+function VertexSphere({
+  position,
+  isSelected,
+  onClick,
+}: {
+  position: { x: number; y: number; z: number };
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <mesh
+      position={[position.x, position.y, position.z]}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
+      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+    >
+      <sphereGeometry args={[0.1, 8, 8]} />
+      <meshBasicMaterial color={isSelected ? '#f59e0b' : '#93c5fd'} transparent opacity={0.6} />
+    </mesh>
+  );
+}
+
+function EdgePickerOverlay() {
+  const modifierPicker = useUIStore((s) => s.modifierPicker);
+  const toggleEdge = useUIStore((s) => s.toggleModifierPickerEdge);
+
+  if (!modifierPicker || modifierPicker.loading || modifierPicker.edges.length === 0) return null;
+
+  // Los puntos ya están en coordenadas Three.js Y-up (transformados en el worker).
+  // No aplicamos offset de grupo — las coordenadas son absolutas en world space.
+  return (
+    <>
+      {modifierPicker.edges.map((edge: EdgeInfo) => {
+        const isSelected = modifierPicker.selectedIndices.includes(edge.index);
+        return (
+          <group key={edge.index}>
+            <EdgeCylinder
+              start={edge.start}
+              end={edge.end}
+              isSelected={isSelected}
+              onClick={() => toggleEdge(edge.index)}
+            />
+            <VertexSphere position={edge.start} isSelected={isSelected} onClick={() => toggleEdge(edge.index)} />
+            <VertexSphere position={edge.end} isSelected={isSelected} onClick={() => toggleEdge(edge.index)} />
+          </group>
+        );
+      })}
+    </>
   );
 }
 
@@ -514,6 +616,9 @@ export default function Canvas3D() {
 
         {/* Gizmo de preview interactivo de extrusión (flecha arrastrable) */}
         <ExtrudePreviewGizmo onTransformingChange={setIsTransforming} />
+
+        {/* Overlay de selección de aristas para modificadores */}
+        <EdgePickerOverlay />
 
         {/* Plano para sombras */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>

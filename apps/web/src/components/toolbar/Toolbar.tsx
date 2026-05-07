@@ -39,6 +39,7 @@ import { useState, useRef } from 'react';
 import { exportModel } from '@/lib/export/modelExporter';
 import { saveProject, loadProject } from '@/lib/project/projectSerializer';
 import { importModelFile } from '@/lib/import/modelImporter';
+import { ALL_DISPLAY_UNITS } from '@/lib/cad/unitConversion';
 import {
   ExtrudeDialog,
   RevolveDialog,
@@ -124,6 +125,8 @@ export default function Toolbar() {
     redo: featureRedo,
     canUndo: featureCanUndo,
     canRedo: featureCanRedo,
+    displayUnit,
+    setDisplayUnit,
   } = useFeatureStore();
 
   const activeUndo = editMode === '3d' ? featureUndo : undo;
@@ -782,6 +785,21 @@ export default function Toolbar() {
 
       {/* Separador */}
       <div className="mx-4 h-8 w-px bg-border" />
+
+      {/* Selector de unidad 3D */}
+      <div className="flex items-center gap-1 rounded-md border border-border bg-muted/30 px-2 py-0.5">
+        <span className="text-[10px] text-muted-foreground">Unidad:</span>
+        <select
+          value={displayUnit}
+          onChange={(e) => setDisplayUnit(e.target.value as (typeof ALL_DISPLAY_UNITS)[number])}
+          className="rounded border-none bg-transparent text-xs focus:outline-none"
+          title="Unidad de medida 3D"
+        >
+          {ALL_DISPLAY_UNITS.map((u) => (
+            <option key={u} value={u}>{u}</option>
+          ))}
+        </select>
+      </div>
 
       {/* Primitivas 3D */}
       <div className="flex items-center space-x-1">

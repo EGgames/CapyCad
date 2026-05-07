@@ -5,8 +5,15 @@
  * en un Web Worker sin bloquear la UI principal.
  */
 
-import type { SketchEntity } from '@stl-model/shared-types';
+import type { SketchEntity, AppliedModifier } from '@stl-model/shared-types';
 import { nanoid } from 'nanoid';
+
+export interface EdgeSegmentData {
+  index: number;
+  start: { x: number; y: number; z: number };
+  end: { x: number; y: number; z: number };
+  mid: { x: number; y: number; z: number };
+}
 
 interface GeometryData {
   positions: Float32Array;
@@ -53,7 +60,7 @@ export class CADWorkerClient {
       });
 
       this.worker.onmessage = (event) => {
-        const { id, type, success, geometry, error } = event.data;
+        const { id, type, success, geometry, edges, error } = event.data;
 
         const request = this.pendingRequests.get(id);
         if (!request) {
@@ -79,6 +86,13 @@ export class CADWorkerClient {
             case 'boolean':
             case 'draft':
             case 'offset':
+            case 'bevel':
+            case 'cove':
+              request.resolve(geometry);
+              break;
+            case 'get_edges':
+              request.resolve(edges);
+              break;
             case 'primitive_box':
             case 'primitive_sphere':
             case 'primitive_cylinder':
@@ -178,12 +192,40 @@ export class CADWorkerClient {
   }
 
   /**
+   * Obtiene las aristas BRep de un sólido para selección visual
+   */
+  async getEdges(
+    source: BooleanShapeDescriptor,
+    sourceTranslation: { x: number; y: number; z: number },
+    sourceModifiers?: AppliedModifier[]
+  ): Promise<EdgeSegmentData[]> {
+    if (!this.isInitialized) {
+      throw new Error('CAD Worker not initialized. Call initialize() first.');
+    }
+
+    const id = nanoid();
+    const promise = new Promise<EdgeSegmentData[]>((resolve, reject) => {
+      this.pendingRequests.set(id, { resolve, reject });
+    });
+
+    this.worker?.postMessage({
+      id,
+      type: 'get_edges',
+      payload: { source, sourceTranslation, sourceModifiers },
+    });
+
+    return promise;
+  }
+
+  /**
    * Ejecuta operación de fillet (redondeo de aristas)
    */
   async fillet(
     source: BooleanShapeDescriptor,
     sourceTranslation: { x: number; y: number; z: number },
-    radius: number
+    radius: number,
+    edgeIndices?: number[],
+    sourceModifiers?: AppliedModifier[]
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
       throw new Error('CAD Worker not initialized. Call initialize() first.');
@@ -200,7 +242,7 @@ export class CADWorkerClient {
     this.worker?.postMessage({
       id,
       type: 'fillet',
-      payload: { source, sourceTranslation, radius },
+      payload: { source, sourceTranslation, radius, edgeIndices, sourceModifiers },
     });
 
     return promise;
@@ -212,7 +254,9 @@ export class CADWorkerClient {
   async chamfer(
     source: BooleanShapeDescriptor,
     sourceTranslation: { x: number; y: number; z: number },
-    chamferDistance: number
+    chamferDistance: number,
+    edgeIndices?: number[],
+    sourceModifiers?: AppliedModifier[]
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
       throw new Error('CAD Worker not initialized. Call initialize() first.');
@@ -229,7 +273,7 @@ export class CADWorkerClient {
     this.worker?.postMessage({
       id,
       type: 'chamfer',
-      payload: { source, sourceTranslation, chamferDistance },
+      payload: { source, sourceTranslation, chamferDistance, edgeIndices, sourceModifiers },
     });
 
     return promise;
@@ -241,7 +285,8 @@ export class CADWorkerClient {
   async shell(
     source: BooleanShapeDescriptor,
     sourceTranslation: { x: number; y: number; z: number },
-    thickness: number
+    thickness: number,
+    sourceModifiers?: AppliedModifier[]
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
       throw new Error('CAD Worker not initialized. Call initialize() first.');
@@ -258,7 +303,7 @@ export class CADWorkerClient {
     this.worker?.postMessage({
       id,
       type: 'shell',
-      payload: { source, sourceTranslation, thickness },
+      payload: { source, sourceTranslation, thickness, sourceModifiers },
     });
 
     return promise;
@@ -384,7 +429,8 @@ export class CADWorkerClient {
     source: BooleanShapeDescriptor,
     sourceTranslation: { x: number; y: number; z: number },
     angle: number,
-    neutralPlane: 'XY' | 'XZ' | 'YZ' = 'XY'
+    neutralPlane: 'XY' | 'XZ' | 'YZ' = 'XY',
+    sourceModifiers?: AppliedModifier[]
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
       throw new Error('CAD Worker not initialized. Call initialize() first.');
@@ -401,7 +447,7 @@ export class CADWorkerClient {
     this.worker?.postMessage({
       id,
       type: 'draft',
-      payload: { source, sourceTranslation, angle, neutralPlane },
+      payload: { source, sourceTranslation, angle, neutralPlane, sourceModifiers },
     });
 
     return promise;
@@ -413,7 +459,8 @@ export class CADWorkerClient {
   async offset(
     source: BooleanShapeDescriptor,
     sourceTranslation: { x: number; y: number; z: number },
-    offsetDistance: number
+    offsetDistance: number,
+    sourceModifiers?: AppliedModifier[]
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
       throw new Error('CAD Worker not initialized. Call initialize() first.');
@@ -427,9 +474,61 @@ export class CADWorkerClient {
     this.worker?.postMessage({
       id,
       type: 'offset',
-      payload: { source, sourceTranslation, offsetDistance },
+      payload: { source, sourceTranslation, offsetDistance, sourceModifiers },
     });
 
+    return promise;
+  }
+
+  /**
+   * Ejecuta operación de bisel asimétrico (bevel).
+   * d1 y d2 son las distancias desde las dos caras adyacentes a cada arista.
+   */
+  async bevel(
+    source: BooleanShapeDescriptor,
+    sourceTranslation: { x: number; y: number; z: number },
+    d1: number,
+    d2: number,
+    edgeIndices?: number[],
+    sourceModifiers?: AppliedModifier[]
+  ): Promise<GeometryData> {
+    if (!this.isInitialized) {
+      throw new Error('CAD Worker not initialized. Call initialize() first.');
+    }
+    const id = nanoid();
+    const promise = new Promise<GeometryData>((resolve, reject) => {
+      this.pendingRequests.set(id, { resolve, reject });
+    });
+    this.worker?.postMessage({
+      id,
+      type: 'bevel',
+      payload: { source, sourceTranslation, d1, d2, edgeIndices, sourceModifiers },
+    });
+    return promise;
+  }
+
+  /**
+   * Ejecuta operación de media caña (cove — redondeo cóncavo).
+   */
+  async cove(
+    source: BooleanShapeDescriptor,
+    sourceTranslation: { x: number; y: number; z: number },
+    radius: number,
+    edgeIndices?: number[],
+    sourceModifiers?: AppliedModifier[]
+  ): Promise<GeometryData> {
+    if (!this.isInitialized) {
+      throw new Error('CAD Worker not initialized. Call initialize() first.');
+    }
+    const id = nanoid();
+    const promise = new Promise<GeometryData>((resolve, reject) => {
+      this.pendingRequests.set(id, { resolve, reject });
+    });
+    this.worker?.postMessage({
+      id,
+      type: 'cove',
+      payload: { source, sourceTranslation, radius, edgeIndices },
+    });
     return promise;
   }
 

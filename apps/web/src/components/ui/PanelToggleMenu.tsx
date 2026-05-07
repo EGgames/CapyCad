@@ -23,6 +23,7 @@ const PANEL_LABELS: Record<PanelId, { label: string; icon: typeof PanelTop }> = 
   toolbar3d: { label: 'Herramientas 3D', icon: Cuboid },
   toolbarExtrude: { label: 'Extrusión', icon: Box },
   toolbarBoolean: { label: 'Booleanas', icon: Combine },
+  toolbarModifiers: { label: 'Modificadores', icon: RotateCcw },
   sidebar: { label: 'Feature Tree', icon: PanelLeft },
   properties: { label: 'Propiedades', icon: PanelRight },
 };

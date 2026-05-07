@@ -65,6 +65,10 @@ export default function Sidebar() {
         return Triangle;
       case FeatureType.CHAMFER:
         return Minus;
+      case FeatureType.BEVEL:
+        return Minus;
+      case FeatureType.COVE:
+        return Triangle;
       case FeatureType.SHELL:
         return Box;
       case FeatureType.PATTERN_LINEAR:

@@ -1,6 +1,9 @@
 import { EntityId, Vector3 } from './core';
 import { Sketch } from './geometry';
 
+/** Unidades de medida disponibles para el espacio 3D del proyecto */
+export type DisplayUnit = 'mm' | 'cm' | 'm' | 'in' | 'ft';
+
 /**
  * Tipos de operaciones CAD
  */
@@ -15,6 +18,8 @@ export enum FeatureType {
   OFFSET = 'offset',
   DRAFT = 'draft',
   BOOLEAN = 'boolean',
+  BEVEL = 'bevel',
+  COVE = 'cove',
   PATTERN_LINEAR = 'pattern_linear',
   PATTERN_CIRCULAR = 'pattern_circular',
   IMPORT = 'import',
@@ -24,6 +29,26 @@ export enum FeatureType {
   PRIMITIVE_CYLINDER = 'primitive_cylinder',
   PRIMITIVE_CONE = 'primitive_cone',
   PRIMITIVE_TORUS = 'primitive_torus',
+}
+
+/**
+ * Registro de un modificador de forma ya aplicado.
+ * Se almacena en la feature para poder reproducir la cadena completa
+ * al aplicar modificadores adicionales sobre el mismo sólido.
+ */
+export interface AppliedModifier {
+  type: 'fillet' | 'chamfer' | 'bevel' | 'cove' | 'shell' | 'draft' | 'offset';
+  params: {
+    radius?: number;
+    distance?: number;
+    d1?: number;
+    d2?: number;
+    thickness?: number;
+    angle?: number;
+    neutralPlane?: 'XY' | 'XZ' | 'YZ';
+  };
+  /** Índices de aristas afectadas (undefined = todas) */
+  edgeIndices?: number[];
 }
 
 /**
@@ -40,6 +65,8 @@ export interface Feature {
   position?: Vector3;
   /** Orientación en radianes (Euler XYZ) */
   rotation?: Vector3;
+  /** Cadena de modificadores aplicados en orden (fillet, chamfer, etc.) */
+  modifiers?: AppliedModifier[];
 }
 
 /**
@@ -85,6 +112,27 @@ export interface ChamferFeature extends Feature {
   edges: EntityId[];
   distance: number;
   angle?: number;
+}
+
+/**
+ * Bevel (bisel — chaflán asimétrico con dos distancias distintas)
+ */
+export interface BevelFeature extends Feature {
+  type: FeatureType.BEVEL;
+  sourceId: EntityId;
+  d1: number;
+  d2: number;
+  geometryCenter?: Vector3;
+}
+
+/**
+ * Cove (media caña — redondeo cóncavo en aristas interiores)
+ */
+export interface CoveFeature extends Feature {
+  type: FeatureType.COVE;
+  sourceId: EntityId;
+  radius: number;
+  geometryCenter?: Vector3;
 }
 
 /**

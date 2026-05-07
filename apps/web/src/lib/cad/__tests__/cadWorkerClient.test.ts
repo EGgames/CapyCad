@@ -45,7 +45,9 @@ class MockWorker {
           data.type === 'revolve' ||
           data.type === 'boolean' ||
           data.type === 'draft' ||
-          data.type === 'offset'
+          data.type === 'offset' ||
+          data.type === 'bevel' ||
+          data.type === 'cove'
         ) {
           this.onmessage(
             new MessageEvent('message', {
@@ -1366,5 +1368,91 @@ describe('CADWorkerClient - Operación de Offset', () => {
       'Offset operation failed'
     );
     errClient.terminate();
+  });
+});
+
+describe('CADWorkerClient - Operación de Bevel', () => {
+  let client: CADWorkerClient;
+
+  beforeEach(async () => {
+    global.Worker = MockWorker as any;
+    client = new CADWorkerClient();
+    await client.initialize();
+  });
+
+  afterEach(() => {
+    client.terminate();
+  });
+
+  it('bevel_whenValidParams_thenReturnsGeometry', async () => {
+    const geometry = await client.bevel(
+      { kind: 'box', width: 20, height: 20, depth: 20 },
+      { x: 0, y: 0, z: 0 },
+      3,
+      1.5
+    );
+    expect(geometry).toBeDefined();
+    expect(geometry.positions).toBeInstanceOf(Float32Array);
+  });
+
+  it('bevel_whenNotInitialized_thenThrows', async () => {
+    global.Worker = MockWorker as any;
+    const freshClient = new CADWorkerClient();
+    await expect(
+      freshClient.bevel({ kind: 'box', width: 20, height: 20, depth: 20 }, { x: 0, y: 0, z: 0 }, 3, 1.5)
+    ).rejects.toThrow('CAD Worker not initialized');
+    freshClient.terminate();
+  });
+
+  it('bevel_whenAsymmetricD1D2_thenReturnsGeometry', async () => {
+    const geometry = await client.bevel(
+      { kind: 'box', width: 10, height: 10, depth: 10 },
+      { x: 0, y: 0, z: 0 },
+      5,
+      2
+    );
+    expect(geometry.positions.length).toBeGreaterThan(0);
+  });
+});
+
+describe('CADWorkerClient - Operación de Cove', () => {
+  let client: CADWorkerClient;
+
+  beforeEach(async () => {
+    global.Worker = MockWorker as any;
+    client = new CADWorkerClient();
+    await client.initialize();
+  });
+
+  afterEach(() => {
+    client.terminate();
+  });
+
+  it('cove_whenValidRadius_thenReturnsGeometry', async () => {
+    const geometry = await client.cove(
+      { kind: 'box', width: 20, height: 20, depth: 20 },
+      { x: 0, y: 0, z: 0 },
+      2
+    );
+    expect(geometry).toBeDefined();
+    expect(geometry.positions).toBeInstanceOf(Float32Array);
+  });
+
+  it('cove_whenNotInitialized_thenThrows', async () => {
+    global.Worker = MockWorker as any;
+    const freshClient = new CADWorkerClient();
+    await expect(
+      freshClient.cove({ kind: 'box', width: 20, height: 20, depth: 20 }, { x: 0, y: 0, z: 0 }, 2)
+    ).rejects.toThrow('CAD Worker not initialized');
+    freshClient.terminate();
+  });
+
+  it('cove_whenSourceIsPrimitive_thenReturnsGeometry', async () => {
+    const geometry = await client.cove(
+      { kind: 'sphere', radius: 10 },
+      { x: 0, y: 0, z: 0 },
+      1.5
+    );
+    expect(geometry.normals).toBeInstanceOf(Float32Array);
   });
 });

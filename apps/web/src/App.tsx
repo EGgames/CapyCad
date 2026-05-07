@@ -6,6 +6,7 @@ import Toolbar2D from './components/toolbar/Toolbar2D';
 import Toolbar3D from './components/toolbar/Toolbar3D';
 import ToolbarExtrude from './components/toolbar/ToolbarExtrude';
 import ToolbarBoolean from './components/toolbar/ToolbarBoolean';
+import ToolbarModifiers from './components/toolbar/ToolbarModifiers';
 import Sidebar from './components/sidebar/Sidebar';
 import PropertiesPanel from './components/properties/PropertiesPanel';
 import DraggablePanel from './components/ui/DraggablePanel';
@@ -69,6 +70,11 @@ function App() {
     toolbarBoolean: (
       <DraggablePanel id="toolbarBoolean" title="Booleanas" closable>
         <ToolbarBoolean />
+      </DraggablePanel>
+    ),
+    toolbarModifiers: (
+      <DraggablePanel id="toolbarModifiers" title="Modificadores" closable>
+        <ToolbarModifiers />
       </DraggablePanel>
     ),
     sidebar: (

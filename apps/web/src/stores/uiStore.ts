@@ -24,7 +24,8 @@ export type PanelId =
   | 'toolbar2d'
   | 'toolbar3d'
   | 'toolbarExtrude'
-  | 'toolbarBoolean';
+  | 'toolbarBoolean'
+  | 'toolbarModifiers';
 
 export type BooleanOperation = 'union' | 'subtract' | 'intersect';
 
@@ -35,6 +36,26 @@ export interface BooleanWizard {
   step: 'select-target' | 'select-tool';
   /** ID de la feature seleccionada como cuerpo objetivo (A) */
   targetId: string | null;
+}
+
+/** Segmento de arista retornado por get_edges para selección visual */
+export interface EdgeInfo {
+  index: number;
+  start: { x: number; y: number; z: number };
+  end: { x: number; y: number; z: number };
+  mid: { x: number; y: number; z: number };
+}
+
+/** Estado del selector de aristas/vértices para modificadores */
+export interface ModifierPicker {
+  /** ID de la feature sobre la que se está seleccionando */
+  featureId: string;
+  /** Aristas extraídas del worker */
+  edges: EdgeInfo[];
+  /** Índices de aristas seleccionadas por el usuario */
+  selectedIndices: number[];
+  /** Indica si las aristas están siendo cargadas del worker */
+  loading: boolean;
 }
 
 interface UIState {
@@ -52,6 +73,13 @@ interface UIState {
   startBooleanWizard: (operation: BooleanOperation) => void;
   cancelBooleanWizard: () => void;
   setBooleanTarget: (featureId: string) => void;
+  /** Selector de aristas para modificadores de aristas (fillet, chamfer, bevel, cove). null = inactivo. */
+  modifierPicker: ModifierPicker | null;
+  startModifierPicker: (featureId: string) => void;
+  setModifierPickerEdges: (edges: EdgeInfo[]) => void;
+  toggleModifierPickerEdge: (index: number) => void;
+  selectAllModifierEdges: () => void;
+  clearModifierPicker: () => void;
   /** Modo de preview interactivo de extrusión (flecha arrastrable en la escena). */
   extrudePreviewActive: boolean;
   setExtrudePreviewActive: (v: boolean) => void;
@@ -79,6 +107,7 @@ const DEFAULT_PANELS: Record<PanelId, PanelConfig> = {
   toolbar3d: { visible: true, position: { x: 8, y: 122 }, dock: 'top', order: 3 },
   toolbarExtrude: { visible: true, position: { x: 8, y: 176 }, dock: 'top', order: 4 },
   toolbarBoolean: { visible: true, position: { x: 8, y: 230 }, dock: 'top', order: 5 },
+  toolbarModifiers: { visible: true, position: { x: 8, y: 284 }, dock: 'top', order: 6 },
   sidebar: { visible: true, position: { x: 8, y: 300 }, dock: 'left', order: 0 },
   properties: { visible: true, position: { x: 800, y: 110 }, dock: 'right', order: 0 },
 };
@@ -89,6 +118,7 @@ export const useUIStore = create<UIState>()(
       panels: DEFAULT_PANELS,
       selectionToolActive: true,
       booleanWizard: null,
+      modifierPicker: null,
       extrudePreviewActive: false,
       extrudePreviewEntityIds: [] as string[],
       extrudePreviewDistance: 2.0,
@@ -107,6 +137,28 @@ export const useUIStore = create<UIState>()(
             ? { booleanWizard: { ...state.booleanWizard, step: 'select-tool', targetId: featureId } }
             : {}
         ),
+
+      startModifierPicker: (featureId) =>
+        set({ modifierPicker: { featureId, edges: [], selectedIndices: [], loading: true } }),
+      setModifierPickerEdges: (edges) =>
+        set((state) =>
+          state.modifierPicker
+            ? { modifierPicker: { ...state.modifierPicker, edges, loading: false } }
+            : {}
+        ),
+      toggleModifierPickerEdge: (index) =>
+        set((state) => {
+          if (!state.modifierPicker) return {};
+          const sel = state.modifierPicker.selectedIndices;
+          const next = sel.includes(index) ? sel.filter((i) => i !== index) : [...sel, index];
+          return { modifierPicker: { ...state.modifierPicker, selectedIndices: next } };
+        }),
+      selectAllModifierEdges: () =>
+        set((state) => {
+          if (!state.modifierPicker) return {};
+          return { modifierPicker: { ...state.modifierPicker, selectedIndices: [] } };
+        }),
+      clearModifierPicker: () => set({ modifierPicker: null }),
 
       setExtrudePreviewActive: (v) =>
         set({

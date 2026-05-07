@@ -51,6 +51,8 @@ vi.mock('@/lib/cad/cadWorkerClient', () => ({
     sweep: vi.fn().mockResolvedValue(mockGeometryData),
     loft: vi.fn().mockResolvedValue(mockGeometryData),
     offset: vi.fn().mockResolvedValue(mockGeometryData),
+    bevel: vi.fn().mockResolvedValue(mockGeometryData),
+    cove: vi.fn().mockResolvedValue(mockGeometryData),
   })),
 }));
 
@@ -603,15 +605,15 @@ describe('featureStore', () => {
       useFeatureStore.getState().addFeature(extrudeBase, new BufferGeometry());
     });
 
-    it('createDraft_whenValidAngle_thenCreatesDraftFeature', async () => {
+    it('createDraft_whenValidAngle_thenModifiesSourceInPlace', async () => {
       const { createDraft } = useFeatureStore.getState();
 
       const featureId = await createDraft('ext-base', 5, 'XY');
 
+      expect(featureId).toBe('ext-base');
       const { features } = useFeatureStore.getState();
-      const draft = features.find((f) => f.id === featureId);
-      expect(draft).toBeDefined();
-      expect(draft?.type).toBe(FeatureType.DRAFT);
+      expect(features.filter((f) => f.id === 'ext-base')).toHaveLength(1);
+      expect(features.find((f) => f.id === 'ext-base')?.type).toBe(FeatureType.EXTRUDE);
     });
 
     it('createDraft_whenAngleExceeds30_thenThrows', async () => {
@@ -638,14 +640,14 @@ describe('featureStore', () => {
       );
     });
 
-    it('createDraft_whenDefaultNeutralPlane_thenUsesXY', async () => {
+    it('createDraft_whenDefaultNeutralPlane_thenCompletesSuccessfully', async () => {
       const { createDraft } = useFeatureStore.getState();
 
+      // Default neutralPlane is 'XY'; modifier modifies source in-place
       const featureId = await createDraft('ext-base', 10);
 
-      const { features } = useFeatureStore.getState();
-      const draft = features.find((f) => f.id === featureId) as { neutralPlane?: string };
-      expect(draft?.neutralPlane).toBe('XY');
+      expect(featureId).toBe('ext-base');
+      expect(useFeatureStore.getState().isProcessing).toBe(false);
     });
   });
 
@@ -668,14 +670,16 @@ describe('featureStore', () => {
       useFeatureStore.getState().addFeature(extrudeBase, new BufferGeometry());
     });
 
-    it('createFillet_whenValidRadius_thenCreatesFilletFeature', async () => {
+    it('createFillet_whenValidRadius_thenModifiesSourceInPlace', async () => {
       const { createFillet } = useFeatureStore.getState();
       const featureId = await createFillet('ext-fillet', 3);
+      // Modifier returns source featureId (in-place update, no new feature node)
+      expect(featureId).toBe('ext-fillet');
       const { features } = useFeatureStore.getState();
-      const fillet = features.find((f) => f.id === featureId);
-      expect(fillet).toBeDefined();
-      expect(fillet?.type).toBe(FeatureType.FILLET);
-      expect(fillet?.name).toContain('3');
+      // Feature count unchanged — no new node added
+      expect(features.filter((f) => f.id === 'ext-fillet')).toHaveLength(1);
+      // Source feature type is preserved
+      expect(features.find((f) => f.id === 'ext-fillet')?.type).toBe(FeatureType.EXTRUDE);
     });
 
     it('createFillet_whenSourceNotFound_thenThrows', async () => {
@@ -711,14 +715,13 @@ describe('featureStore', () => {
       useFeatureStore.getState().addFeature(extrudeBase, new BufferGeometry());
     });
 
-    it('createChamfer_whenValidDistance_thenCreatesChamferFeature', async () => {
+    it('createChamfer_whenValidDistance_thenModifiesSourceInPlace', async () => {
       const { createChamfer } = useFeatureStore.getState();
       const featureId = await createChamfer('ext-chamfer', 2);
+      expect(featureId).toBe('ext-chamfer');
       const { features } = useFeatureStore.getState();
-      const chamfer = features.find((f) => f.id === featureId);
-      expect(chamfer).toBeDefined();
-      expect(chamfer?.type).toBe(FeatureType.CHAMFER);
-      expect(chamfer?.name).toContain('2');
+      expect(features.filter((f) => f.id === 'ext-chamfer')).toHaveLength(1);
+      expect(features.find((f) => f.id === 'ext-chamfer')?.type).toBe(FeatureType.EXTRUDE);
     });
 
     it('createChamfer_whenSourceNotFound_thenThrows', async () => {
@@ -754,14 +757,13 @@ describe('featureStore', () => {
       useFeatureStore.getState().addFeature(extrudeBase, new BufferGeometry());
     });
 
-    it('createShell_whenValidThickness_thenCreatesShellFeature', async () => {
+    it('createShell_whenValidThickness_thenModifiesSourceInPlace', async () => {
       const { createShell } = useFeatureStore.getState();
       const featureId = await createShell('ext-shell', 1.5);
+      expect(featureId).toBe('ext-shell');
       const { features } = useFeatureStore.getState();
-      const shell = features.find((f) => f.id === featureId);
-      expect(shell).toBeDefined();
-      expect(shell?.type).toBe(FeatureType.SHELL);
-      expect(shell?.name).toContain('1.5');
+      expect(features.filter((f) => f.id === 'ext-shell')).toHaveLength(1);
+      expect(features.find((f) => f.id === 'ext-shell')?.type).toBe(FeatureType.EXTRUDE);
     });
 
     it('createShell_whenSourceNotFound_thenThrows', async () => {
@@ -887,23 +889,20 @@ describe('featureStore', () => {
       useFeatureStore.getState().addFeature(extrudeBase, new BufferGeometry());
     });
 
-    it('createOffset_whenPositiveDistance_thenCreatesOffsetFeature', async () => {
+    it('createOffset_whenPositiveDistance_thenModifiesSourceInPlace', async () => {
       const { createOffset } = useFeatureStore.getState();
       const featureId = await createOffset('ext-offset', 5);
+      expect(featureId).toBe('ext-offset');
       const { features } = useFeatureStore.getState();
-      const offset = features.find((f) => f.id === featureId);
-      expect(offset).toBeDefined();
-      expect(offset?.type).toBe(FeatureType.OFFSET);
-      expect(offset?.name).toContain('+5');
+      expect(features.filter((f) => f.id === 'ext-offset')).toHaveLength(1);
+      expect(features.find((f) => f.id === 'ext-offset')?.type).toBe(FeatureType.EXTRUDE);
     });
 
-    it('createOffset_whenNegativeDistance_thenNameHasNoPlus', async () => {
+    it('createOffset_whenNegativeDistance_thenModifiesSourceInPlace', async () => {
       const { createOffset } = useFeatureStore.getState();
       const featureId = await createOffset('ext-offset', -3);
-      const { features } = useFeatureStore.getState();
-      const offset = features.find((f) => f.id === featureId);
-      expect(offset?.name).toContain('-3');
-      expect(offset?.name).not.toContain('+-3');
+      expect(featureId).toBe('ext-offset');
+      expect(useFeatureStore.getState().isProcessing).toBe(false);
     });
 
     it('createOffset_whenSourceNotFound_thenThrows', async () => {
@@ -916,6 +915,110 @@ describe('featureStore', () => {
     it('createOffset_whenCompleted_thenResetsProcessing', async () => {
       const { createOffset } = useFeatureStore.getState();
       await createOffset('ext-offset', 5);
+      expect(useFeatureStore.getState().isProcessing).toBe(false);
+    });
+  });
+
+  // ─── createBevel ─────────────────────────────────────────────────────────
+
+  describe('Crear Bevel (createBevel)', () => {
+    beforeEach(() => {
+      useFeatureStore.setState({
+        features: [
+          {
+            id: 'ext-bevel',
+            type: FeatureType.EXTRUDE,
+            name: 'Extrusión',
+            parentId: 'sketch-1',
+            visible: true,
+            suppressed: false,
+            sketch: defaultSketch,
+            distance: 20,
+            direction: 'positive' as const,
+          },
+        ],
+        geometries: new Map(),
+        selectedFeatureId: null,
+        history: [[]],
+        historyIndex: 0,
+        canUndo: false,
+        canRedo: false,
+        isProcessing: false,
+        processingProgress: 0,
+      });
+    });
+
+    it('createBevel_whenValidParams_thenModifiesSourceInPlace', async () => {
+      const { createBevel } = useFeatureStore.getState();
+      const featureId = await createBevel('ext-bevel', 3, 1.5);
+      expect(featureId).toBe('ext-bevel');
+      const { features } = useFeatureStore.getState();
+      expect(features.filter((f) => f.id === 'ext-bevel')).toHaveLength(1);
+      expect(features.find((f) => f.id === 'ext-bevel')?.type).toBe(FeatureType.EXTRUDE);
+    });
+
+    it('createBevel_whenSourceNotFound_thenThrows', async () => {
+      const { createBevel } = useFeatureStore.getState();
+      await expect(createBevel('nonexistent', 3, 1.5)).rejects.toThrow(
+        'Source solid feature not found'
+      );
+    });
+
+    it('createBevel_whenCompleted_thenResetsProcessing', async () => {
+      const { createBevel } = useFeatureStore.getState();
+      await createBevel('ext-bevel', 3, 1.5);
+      expect(useFeatureStore.getState().isProcessing).toBe(false);
+    });
+  });
+
+  // ─── createCove ──────────────────────────────────────────────────────────
+
+  describe('Crear Cove (createCove)', () => {
+    beforeEach(() => {
+      useFeatureStore.setState({
+        features: [
+          {
+            id: 'ext-cove',
+            type: FeatureType.EXTRUDE,
+            name: 'Extrusión',
+            parentId: 'sketch-1',
+            visible: true,
+            suppressed: false,
+            sketch: defaultSketch,
+            distance: 20,
+            direction: 'positive' as const,
+          },
+        ],
+        geometries: new Map(),
+        selectedFeatureId: null,
+        history: [[]],
+        historyIndex: 0,
+        canUndo: false,
+        canRedo: false,
+        isProcessing: false,
+        processingProgress: 0,
+      });
+    });
+
+    it('createCove_whenValidRadius_thenModifiesSourceInPlace', async () => {
+      const { createCove } = useFeatureStore.getState();
+      const featureId = await createCove('ext-cove', 2);
+      expect(featureId).toBe('ext-cove');
+      const { features } = useFeatureStore.getState();
+      expect(features.filter((f) => f.id === 'ext-cove')).toHaveLength(1);
+      expect(features.find((f) => f.id === 'ext-cove')?.type).toBe(FeatureType.EXTRUDE);
+    });
+
+    it('createCove_whenSourceNotFound_thenThrows', async () => {
+      const { createCove } = useFeatureStore.getState();
+      await expect(createCove('nonexistent', 2)).rejects.toThrow(
+        'Source solid feature not found'
+      );
+    });
+
+    it('createCove_whenCompleted_thenResetsProcessing', async () => {
+      const { createCove } = useFeatureStore.getState();
+      await createCove('ext-cove', 2);
       expect(useFeatureStore.getState().isProcessing).toBe(false);
     });
   });
