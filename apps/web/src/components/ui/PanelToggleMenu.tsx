@@ -10,14 +10,18 @@ import {
   FolderOpen,
   Combine,
   RotateCcw,
+  Box,
+  MousePointer2,
 } from 'lucide-react';
 import { useUIStore, type PanelId } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
 
 const PANEL_LABELS: Record<PanelId, { label: string; icon: typeof PanelTop }> = {
   toolbarFile: { label: 'Archivo', icon: FolderOpen },
+  toolbarSelect: { label: 'Selección', icon: MousePointer2 },
   toolbar2d: { label: 'Herramientas 2D', icon: PanelTop },
   toolbar3d: { label: 'Herramientas 3D', icon: Cuboid },
+  toolbarExtrude: { label: 'Extrusión', icon: Box },
   toolbarBoolean: { label: 'Booleanas', icon: Combine },
   sidebar: { label: 'Feature Tree', icon: PanelLeft },
   properties: { label: 'Propiedades', icon: PanelRight },

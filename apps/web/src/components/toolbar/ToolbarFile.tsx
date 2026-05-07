@@ -27,7 +27,20 @@ export default function ToolbarFile() {
     activeSketch,
     setEditMode,
   } = useSketchStore();
-  const { features, geometries, importModel } = useFeatureStore();
+  const {
+    features,
+    geometries,
+    importModel,
+    undo: featureUndo,
+    redo: featureRedo,
+    canUndo: featureCanUndo,
+    canRedo: featureCanRedo,
+  } = useFeatureStore();
+
+  const activeUndo = editMode === '3d' ? featureUndo : undo;
+  const activeRedo = editMode === '3d' ? featureRedo : redo;
+  const activeCanUndo = () => (editMode === '3d' ? featureCanUndo : canUndo());
+  const activeCanRedo = () => (editMode === '3d' ? featureCanRedo : canRedo());
   const [showExportMenu, setShowExportMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importFileInputRef = useRef<HTMLInputElement>(null);
@@ -247,11 +260,11 @@ export default function ToolbarFile() {
       {/* Undo/Redo */}
       <div className={cn(isVertical ? 'flex flex-col items-stretch space-y-1' : 'flex items-center space-x-1')}>
         <button
-          onClick={undo}
-          disabled={!canUndo()}
+          onClick={activeUndo}
+          disabled={!activeCanUndo()}
           className={cn(
             isVertical ? 'flex h-9 w-full items-center gap-2 rounded-md px-3' : 'flex h-9 w-9 items-center justify-center rounded-md',
-            canUndo() ? 'hover:bg-muted' : 'cursor-not-allowed opacity-50'
+            activeCanUndo() ? 'hover:bg-muted' : 'cursor-not-allowed opacity-50'
           )}
           title="Deshacer (Ctrl+Z)"
         >
@@ -259,11 +272,11 @@ export default function ToolbarFile() {
           {isVertical && <span className="text-sm">Deshacer</span>}
         </button>
         <button
-          onClick={redo}
-          disabled={!canRedo()}
+          onClick={activeRedo}
+          disabled={!activeCanRedo()}
           className={cn(
             isVertical ? 'flex h-9 w-full items-center gap-2 rounded-md px-3' : 'flex h-9 w-9 items-center justify-center rounded-md',
-            canRedo() ? 'hover:bg-muted' : 'cursor-not-allowed opacity-50'
+            activeCanRedo() ? 'hover:bg-muted' : 'cursor-not-allowed opacity-50'
           )}
           title="Rehacer (Ctrl+Y)"
         >

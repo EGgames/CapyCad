@@ -1,8 +1,10 @@
 import Canvas3D from './components/canvas/Canvas3D';
 import SketchEditor from './components/editor/SketchEditor';
 import ToolbarFile from './components/toolbar/ToolbarFile';
+import ToolbarSelect from './components/toolbar/ToolbarSelect';
 import Toolbar2D from './components/toolbar/Toolbar2D';
 import Toolbar3D from './components/toolbar/Toolbar3D';
+import ToolbarExtrude from './components/toolbar/ToolbarExtrude';
 import ToolbarBoolean from './components/toolbar/ToolbarBoolean';
 import Sidebar from './components/sidebar/Sidebar';
 import PropertiesPanel from './components/properties/PropertiesPanel';
@@ -20,7 +22,9 @@ import { useState, useEffect, useRef, type ReactNode } from 'react';
 function App() {
   const editMode = useSketchStore((state) => state.editMode);
   const panels = useUIStore((s) => s.panels);
-  const { isInitializing, error } = useCADWorker();
+  // Init diferido: no bloquea el primer render. El motor CAD se carga en idle
+  // o cuando el usuario entra a 3D (lo que ocurra primero).
+  const { isInitializing, isInitialized, error, triggerInit } = useCADWorker({ deferred: true });
   const { lastSaved } = useAutoSave();
   const [errorDismissed, setErrorDismissed] = useState(false);
   // Lazy-mount del canvas 3D
@@ -31,13 +35,20 @@ function App() {
       has3DRef.current = true;
       setHas3D(true);
     }
-  }, [editMode]);
+    // Forzar init del motor CAD al entrar a 3D si aún no se inició
+    if (editMode === '3d') triggerInit();
+  }, [editMode, triggerInit]);
 
   // Build a map of all panel nodes (rendered once, placed via dock or floating)
   const panelNodes: Record<PanelId, ReactNode> = {
     toolbarFile: (
       <DraggablePanel id="toolbarFile" title="Archivo" closable>
         <ToolbarFile />
+      </DraggablePanel>
+    ),
+    toolbarSelect: (
+      <DraggablePanel id="toolbarSelect" title="Selección" closable>
+        <ToolbarSelect />
       </DraggablePanel>
     ),
     toolbar2d: (
@@ -48,6 +59,11 @@ function App() {
     toolbar3d: (
       <DraggablePanel id="toolbar3d" title="Herramientas 3D" closable>
         <Toolbar3D />
+      </DraggablePanel>
+    ),
+    toolbarExtrude: (
+      <DraggablePanel id="toolbarExtrude" title="Extrusión" closable>
+        <ToolbarExtrude />
       </DraggablePanel>
     ),
     toolbarBoolean: (
@@ -73,8 +89,8 @@ function App() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background flex flex-col">
-      {/* CAD init overlay */}
-      {isInitializing && (
+      {/* CAD init overlay — solo bloquea cuando el usuario está en 3D y aún no terminó */}
+      {isInitializing && editMode === '3d' && !isInitialized && (
         <div
           data-testid="cad-init-overlay"
           className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
@@ -86,6 +102,17 @@ function App() {
               <p className="text-sm text-muted-foreground">Cargando OpenCascade.js</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast no bloqueante mientras carga en background (modo 2D) */}
+      {isInitializing && editMode === '2d' && (
+        <div
+          data-testid="cad-init-toast"
+          className="absolute bottom-3 right-3 z-30 flex items-center gap-2 rounded-md border border-border bg-card/95 px-3 py-1.5 text-xs text-muted-foreground shadow-md backdrop-blur-sm"
+        >
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+          <span>Precargando motor CAD…</span>
         </div>
       )}
 

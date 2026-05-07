@@ -141,7 +141,7 @@ describe('useCADWorker - Estados de Transición', () => {
     expect(states[1].isInitializing).toBe(true);
     expect(states[1].isInitialized).toBe(false);
 
-    expect(states[2]).toEqual({
+    expect(states[2]).toMatchObject({
       isInitialized: true,
       isInitializing: false,
       error: null,

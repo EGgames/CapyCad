@@ -1,8 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { Line } from '@react-three/drei';
+import { Line, TransformControls } from '@react-three/drei';
+import { ThreeEvent } from '@react-three/fiber';
 import { nanoid } from 'nanoid';
 import { useSketchStore } from '../../stores/sketchStore';
+import { useUIStore } from '../../stores/uiStore';
+import { useFeatureStore } from '../../stores/featureStore';
 import {
   SketchEntityType,
   Line as LineEntity,
@@ -33,15 +36,64 @@ function worldToFabric(wx: number, wz: number, cw: number, ch: number): [number,
 // Renderizado de entidades en el plano 3D
 // ---------------------------------------------------------------------------
 
-function SketchLine({ entity, cw, ch }: { entity: LineEntity; cw: number; ch: number }) {
-  const start = fabricToWorld(entity.start.x, entity.start.y, cw, ch);
-  const end = fabricToWorld(entity.end.x, entity.end.y, cw, ch);
-  return <Line points={[start, end]} color="#7c3aed" lineWidth={2} />;
+/** Color de la línea según estado de selección. */
+const COLOR_DEFAULT = '#7c3aed';
+const COLOR_SELECTED = '#fbbf24';
+
+/** Crea un handler de click reutilizable para entidades 2D en 3D. */
+function useEntityPicker(entityId: string) {
+  const selectionToolActive = useUIStore((s) => s.selectionToolActive);
+  return (e: ThreeEvent<MouseEvent>) => {
+    if (selectionToolActive === false) return;
+    e.stopPropagation();
+    // Cualquier herramienta de dibujo en curso queda deseleccionada al elegir
+    // un objeto: la herramienta activa pasa a 'select'.
+    useSketchStore.getState().setActiveTool('select');
+    useSketchStore.getState().clearSelection();
+    useSketchStore.getState().selectEntity(entityId);
+    // Excluyente con la selección 3D.
+    useFeatureStore.getState().selectFeature(null);
+  };
 }
 
-function SketchCircle({ entity, cw, ch }: { entity: CircleEntity; cw: number; ch: number }) {
+function SketchLine({
+  entity,
+  cw,
+  ch,
+  selected,
+}: {
+  entity: LineEntity;
+  cw: number;
+  ch: number;
+  selected: boolean;
+}) {
+  const start = fabricToWorld(entity.start.x, entity.start.y, cw, ch);
+  const end = fabricToWorld(entity.end.x, entity.end.y, cw, ch);
+  const onClick = useEntityPicker(entity.id);
+  return (
+    <Line
+      points={[start, end]}
+      color={selected ? COLOR_SELECTED : COLOR_DEFAULT}
+      lineWidth={selected ? 4 : 2}
+      onClick={onClick}
+    />
+  );
+}
+
+function SketchCircle({
+  entity,
+  cw,
+  ch,
+  selected,
+}: {
+  entity: CircleEntity;
+  cw: number;
+  ch: number;
+  selected: boolean;
+}) {
   const [cx, , cz] = fabricToWorld(entity.center.x, entity.center.y, cw, ch);
   const worldRadius = entity.radius / PIXELS_PER_UNIT;
+  const onClick = useEntityPicker(entity.id);
 
   const points = useMemo(() => {
     const pts: [number, number, number][] = [];
@@ -53,12 +105,30 @@ function SketchCircle({ entity, cw, ch }: { entity: CircleEntity; cw: number; ch
     return pts;
   }, [cx, cz, worldRadius]);
 
-  return <Line points={points} color="#7c3aed" lineWidth={2} />;
+  return (
+    <Line
+      points={points}
+      color={selected ? COLOR_SELECTED : COLOR_DEFAULT}
+      lineWidth={selected ? 4 : 2}
+      onClick={onClick}
+    />
+  );
 }
 
-function SketchRect({ entity, cw, ch }: { entity: RectangleEntity; cw: number; ch: number }) {
+function SketchRect({
+  entity,
+  cw,
+  ch,
+  selected,
+}: {
+  entity: RectangleEntity;
+  cw: number;
+  ch: number;
+  selected: boolean;
+}) {
   const [x1, , z1] = fabricToWorld(entity.topLeft.x, entity.topLeft.y, cw, ch);
   const [x2, , z2] = fabricToWorld(entity.bottomRight.x, entity.bottomRight.y, cw, ch);
+  const onClick = useEntityPicker(entity.id);
 
   const points: [number, number, number][] = [
     [x1, 0, z1],
@@ -68,13 +138,31 @@ function SketchRect({ entity, cw, ch }: { entity: RectangleEntity; cw: number; c
     [x1, 0, z1],
   ];
 
-  return <Line points={points} color="#7c3aed" lineWidth={2} />;
+  return (
+    <Line
+      points={points}
+      color={selected ? COLOR_SELECTED : COLOR_DEFAULT}
+      lineWidth={selected ? 4 : 2}
+      onClick={onClick}
+    />
+  );
 }
 
-function SketchPolygon({ entity, cw, ch }: { entity: PolygonEntity; cw: number; ch: number }) {
+function SketchPolygon({
+  entity,
+  cw,
+  ch,
+  selected,
+}: {
+  entity: PolygonEntity;
+  cw: number;
+  ch: number;
+  selected: boolean;
+}) {
   const [cx, , cz] = fabricToWorld(entity.center.x, entity.center.y, cw, ch);
   const worldRadius = entity.radius / PIXELS_PER_UNIT;
   const rotation = entity.rotation ?? 0;
+  const onClick = useEntityPicker(entity.id);
 
   const points = useMemo(() => {
     const pts: [number, number, number][] = [];
@@ -85,12 +173,30 @@ function SketchPolygon({ entity, cw, ch }: { entity: PolygonEntity; cw: number; 
     return pts;
   }, [cx, cz, worldRadius, entity.sides, rotation]);
 
-  return <Line points={points} color="#7c3aed" lineWidth={2} />;
+  return (
+    <Line
+      points={points}
+      color={selected ? COLOR_SELECTED : COLOR_DEFAULT}
+      lineWidth={selected ? 4 : 2}
+      onClick={onClick}
+    />
+  );
 }
 
-function SketchArc({ entity, cw, ch }: { entity: ArcEntity; cw: number; ch: number }) {
+function SketchArc({
+  entity,
+  cw,
+  ch,
+  selected,
+}: {
+  entity: ArcEntity;
+  cw: number;
+  ch: number;
+  selected: boolean;
+}) {
   const [cx, , cz] = fabricToWorld(entity.center.x, entity.center.y, cw, ch);
   const worldRadius = entity.radius / PIXELS_PER_UNIT;
+  const onClick = useEntityPicker(entity.id);
 
   const points = useMemo(() => {
     const segments = 48;
@@ -105,29 +211,200 @@ function SketchArc({ entity, cw, ch }: { entity: ArcEntity; cw: number; ch: numb
     return pts;
   }, [cx, cz, worldRadius, entity.startAngle, entity.endAngle]);
 
-  return <Line points={points} color="#7c3aed" lineWidth={2} />;
+  return (
+    <Line
+      points={points}
+      color={selected ? COLOR_SELECTED : COLOR_DEFAULT}
+      lineWidth={selected ? 4 : 2}
+      onClick={onClick}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Gizmo de transformación para entidad 2D seleccionada (en plano 3D)
+// ---------------------------------------------------------------------------
+
+/** Centro de la entidad en coordenadas de mundo 3D (XZ, y=0). */
+function entityCenterWorld(
+  entity: SketchEntity,
+  cw: number,
+  ch: number
+): [number, number, number] {
+  switch (entity.type) {
+    case SketchEntityType.LINE: {
+      const l = entity as LineEntity;
+      return fabricToWorld((l.start.x + l.end.x) / 2, (l.start.y + l.end.y) / 2, cw, ch);
+    }
+    case SketchEntityType.CIRCLE: {
+      const c = entity as CircleEntity;
+      return fabricToWorld(c.center.x, c.center.y, cw, ch);
+    }
+    case SketchEntityType.RECTANGLE: {
+      const r = entity as RectangleEntity;
+      return fabricToWorld(
+        (r.topLeft.x + r.bottomRight.x) / 2,
+        (r.topLeft.y + r.bottomRight.y) / 2,
+        cw,
+        ch
+      );
+    }
+    case SketchEntityType.POLYGON: {
+      const p = entity as PolygonEntity;
+      return fabricToWorld(p.center.x, p.center.y, cw, ch);
+    }
+    case SketchEntityType.ARC: {
+      const a = entity as ArcEntity;
+      return fabricToWorld(a.center.x, a.center.y, cw, ch);
+    }
+    default:
+      return [0, 0, 0];
+  }
+}
+
+/** Aplica un desplazamiento (en píxeles Fabric) a la entidad. */
+function translateEntityFabric(
+  entity: SketchEntity,
+  dx: number,
+  dy: number
+): Partial<SketchEntity> {
+  switch (entity.type) {
+    case SketchEntityType.LINE: {
+      const l = entity as LineEntity;
+      return {
+        start: { x: l.start.x + dx, y: l.start.y + dy },
+        end: { x: l.end.x + dx, y: l.end.y + dy },
+      } as Partial<SketchEntity>;
+    }
+    case SketchEntityType.CIRCLE: {
+      const c = entity as CircleEntity;
+      return { center: { x: c.center.x + dx, y: c.center.y + dy } } as Partial<SketchEntity>;
+    }
+    case SketchEntityType.RECTANGLE: {
+      const r = entity as RectangleEntity;
+      return {
+        topLeft: { x: r.topLeft.x + dx, y: r.topLeft.y + dy },
+        bottomRight: { x: r.bottomRight.x + dx, y: r.bottomRight.y + dy },
+      } as Partial<SketchEntity>;
+    }
+    case SketchEntityType.POLYGON: {
+      const p = entity as PolygonEntity;
+      return { center: { x: p.center.x + dx, y: p.center.y + dy } } as Partial<SketchEntity>;
+    }
+    case SketchEntityType.ARC: {
+      const a = entity as ArcEntity;
+      return { center: { x: a.center.x + dx, y: a.center.y + dy } } as Partial<SketchEntity>;
+    }
+    default:
+      return {};
+  }
+}
+
+/**
+ * Renderiza un TransformControls anclado a la entidad 2D seleccionada para
+ * permitir trasladarla en el plano XZ. La traslación se persiste en sketchStore.
+ */
+function Sketch2DGizmo({
+  cw,
+  ch,
+  onTransformingChange,
+}: {
+  cw: number;
+  ch: number;
+  onTransformingChange: (transforming: boolean) => void;
+}) {
+  const selectedEntities = useSketchStore((s) => s.selectedEntities);
+  const entities = useSketchStore((s) => s.activeSketch?.entities ?? []);
+  const updateEntity = useSketchStore((s) => s.updateEntity);
+
+  const [groupNode, setGroupNode] = useState<THREE.Group | null>(null);
+  const initialEntity = useRef<SketchEntity | null>(null);
+  const initialPos = useRef<THREE.Vector3 | null>(null);
+  const isTransforming = useRef(false);
+
+  const entityId = selectedEntities[0];
+  const entity = entityId ? entities.find((e) => e.id === entityId) ?? null : null;
+
+  const center = useMemo(
+    () => (entity ? entityCenterWorld(entity, cw, ch) : ([0, 0, 0] as [number, number, number])),
+    [entity, cw, ch]
+  );
+
+  // Re-sincroniza la posición del group con el centro real cuando cambia la
+  // entidad seleccionada (y mientras no estemos arrastrando el gizmo).
+  useEffect(() => {
+    if (!groupNode || isTransforming.current) return;
+    groupNode.position.set(center[0], center[1], center[2]);
+  }, [groupNode, center]);
+
+  if (!entity) return null;
+
+  const handleMouseDown = () => {
+    isTransforming.current = true;
+    onTransformingChange(true);
+    initialEntity.current = entity;
+    initialPos.current = groupNode ? groupNode.position.clone() : null;
+  };
+
+  const handleMouseUp = () => {
+    isTransforming.current = false;
+    onTransformingChange(false);
+    initialEntity.current = null;
+    initialPos.current = null;
+  };
+
+  const handleObjectChange = () => {
+    if (!groupNode || !initialEntity.current || !initialPos.current) return;
+    const dx = groupNode.position.x - initialPos.current.x;
+    const dz = groupNode.position.z - initialPos.current.z;
+    const dxFabric = dx * PIXELS_PER_UNIT;
+    const dyFabric = dz * PIXELS_PER_UNIT;
+    const updates = translateEntityFabric(initialEntity.current, dxFabric, dyFabric);
+    updateEntity(initialEntity.current.id, updates);
+  };
+
+  return (
+    <>
+      <group ref={setGroupNode} position={center} />
+      {groupNode && (
+        <TransformControls
+          object={groupNode}
+          mode="translate"
+          showY={false}
+          size={0.6}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onObjectChange={handleObjectChange}
+        />
+      )}
+    </>
+  );
 }
 
 function SketchEntityRenderer({
   entity,
   cw,
   ch,
+  selected,
 }: {
   entity: SketchEntity;
   cw: number;
   ch: number;
+  selected: boolean;
 }) {
   switch (entity.type) {
     case SketchEntityType.LINE:
-      return <SketchLine entity={entity as LineEntity} cw={cw} ch={ch} />;
+      return <SketchLine entity={entity as LineEntity} cw={cw} ch={ch} selected={selected} />;
     case SketchEntityType.CIRCLE:
-      return <SketchCircle entity={entity as CircleEntity} cw={cw} ch={ch} />;
+      return <SketchCircle entity={entity as CircleEntity} cw={cw} ch={ch} selected={selected} />;
     case SketchEntityType.RECTANGLE:
-      return <SketchRect entity={entity as RectangleEntity} cw={cw} ch={ch} />;
+      return <SketchRect entity={entity as RectangleEntity} cw={cw} ch={ch} selected={selected} />;
     case SketchEntityType.POLYGON:
-      return <SketchPolygon entity={entity as PolygonEntity} cw={cw} ch={ch} />;
+      return (
+        <SketchPolygon entity={entity as PolygonEntity} cw={cw} ch={ch} selected={selected} />
+      );
     case SketchEntityType.ARC:
-      return <SketchArc entity={entity as ArcEntity} cw={cw} ch={ch} />;
+      return <SketchArc entity={entity as ArcEntity} cw={cw} ch={ch} selected={selected} />;
     default:
       return null;
   }
@@ -205,10 +482,17 @@ function DrawPreview({
  * - Muestra las entidades del sketch activo en el plano XZ (y=0).
  * - Cuando hay una herramienta de dibujo activa (≠ 'select'), captura los
  *   eventos de puntero sobre un plano invisible y crea entidades en el store.
+ * - Cuando hay una entidad 2D seleccionada, monta un TransformControls que
+ *   permite trasladarla en XZ.
  */
-export default function SketchIn3D() {
+export default function SketchIn3D({
+  onTransformingChange,
+}: {
+  onTransformingChange?: (transforming: boolean) => void;
+} = {}) {
   const activeTool = useSketchStore((s) => s.activeTool);
   const entities = useSketchStore((s) => s.activeSketch?.entities ?? []);
+  const selectedEntities = useSketchStore((s) => s.selectedEntities);
   const addEntity = useSketchStore((s) => s.addEntity);
   const canvasWidth = useSketchStore((s) => s.canvasWidth);
   const canvasHeight = useSketchStore((s) => s.canvasHeight);
@@ -298,28 +582,46 @@ export default function SketchIn3D() {
 
   return (
     <group>
-      {/* Plano invisible de hit testing para capturar clics de dibujo */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0, 0]}
-        visible={false}
-        onPointerDown={handlePointerDown as any}
-        onPointerMove={handlePointerMove as any}
-        onPointerUp={handlePointerUp as any}
-      >
-        <planeGeometry args={[400, 400]} />
-        <meshBasicMaterial side={THREE.DoubleSide} />
-      </mesh>
+      {/* Plano invisible de hit testing para capturar clics de dibujo.
+          Sólo se monta cuando hay una herramienta de dibujo activa; de lo
+          contrario interceptaría el raycast de las entidades 2D, impidiendo
+          su selección en la vista 3D. */}
+      {isDrawing && (
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, 0, 0]}
+          visible={false}
+          onPointerDown={handlePointerDown as any}
+          onPointerMove={handlePointerMove as any}
+          onPointerUp={handlePointerUp as any}
+        >
+          <planeGeometry args={[400, 400]} />
+          <meshBasicMaterial side={THREE.DoubleSide} />
+        </mesh>
+      )}
 
       {/* Entidades del sketch activo en el plano XZ */}
       {entities.map((entity) => (
-        <SketchEntityRenderer key={entity.id} entity={entity} cw={canvasWidth} ch={canvasHeight} />
+        <SketchEntityRenderer
+          key={entity.id}
+          entity={entity}
+          cw={canvasWidth}
+          ch={canvasHeight}
+          selected={selectedEntities.includes(entity.id)}
+        />
       ))}
 
       {/* Preview mientras se dibuja */}
       {isDrawing && drawStart && drawCurrent && (
         <DrawPreview tool={activeTool} start={drawStart} current={drawCurrent} />
       )}
+
+      {/* Gizmo de transformación para la entidad 2D seleccionada (XZ) */}
+      <Sketch2DGizmo
+        cw={canvasWidth}
+        ch={canvasHeight}
+        onTransformingChange={(t) => onTransformingChange?.(t)}
+      />
     </group>
   );
 }

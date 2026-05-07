@@ -51,6 +51,11 @@ export interface ExtrudeFeature extends Feature {
   distance: number;
   direction: 'positive' | 'negative' | 'both';
   draftAngle?: number;
+  /** Centro de la bounding-box calculado en la creación (antes de cualquier movimiento del usuario) */
+  geometryCenter?: Vector3;
+  /** Dimensiones del canvas del sketch al momento de la creación (para mapeo px→world correcto) */
+  sketchCanvasWidth?: number;
+  sketchCanvasHeight?: number;
 }
 
 /**

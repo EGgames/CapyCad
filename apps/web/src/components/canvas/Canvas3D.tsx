@@ -1,12 +1,23 @@
 import { Canvas, useThree, ThreeEvent } from '@react-three/fiber';
-import { OrbitControls, Grid, GizmoHelper, GizmoViewport, Environment } from '@react-three/drei';
+import {
+  OrbitControls,
+  Grid,
+  GizmoHelper,
+  GizmoViewport,
+  Environment,
+  TransformControls,
+} from '@react-three/drei';
 import { useFeatureStore } from '../../stores/featureStore';
 import { useSketchStore } from '../../stores/sketchStore';
+import { useUIStore } from '../../stores/uiStore';
 import { useRenderStore, TONE_MAPPING_THREE } from '../../stores/renderStore';
 import { getMaterialPreset } from '../../lib/materials/materialPresets';
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
 import SketchIn3D from './SketchIn3D';
+import ExtrudePreviewGizmo from './ExtrudePreviewGizmo';
+import ExtrudePreviewHUD from './ExtrudePreviewHUD';
+import BooleanSelectionHUD from './BooleanSelectionHUD';
 
 export type ViewMode = 'shaded' | 'wireframe' | 'edges' | 'rendered';
 
@@ -111,11 +122,23 @@ function PlacementPlane() {
 /**
  * Renderiza todas las features 3D (extrusiones, revoluciones, etc.)
  */
-function FeatureMeshes({ viewMode }: { viewMode: ViewMode }) {
+function FeatureMeshes({
+  viewMode,
+  meshRefs,
+}: {
+  viewMode: ViewMode;
+  meshRefs: React.MutableRefObject<Map<string, THREE.Group>>;
+}) {
   const geometries = useFeatureStore((state) => state.geometries);
   const features = useFeatureStore((state) => state.features);
   const selectedFeatureId = useFeatureStore((state) => state.selectedFeatureId);
   const featureMaterials = useFeatureStore((state) => state.featureMaterials);
+  const selectionToolActive = useUIStore((s) => s.selectionToolActive);
+  const booleanWizard = useUIStore((s) => s.booleanWizard);
+  const setBooleanTarget = useUIStore((s) => s.setBooleanTarget);
+  const cancelBooleanWizard = useUIStore((s) => s.cancelBooleanWizard);
+  const createBoolean = useFeatureStore((s) => s.createBoolean);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const isRendered = viewMode === 'rendered';
 
   const geometryArray = useMemo(() => {
@@ -138,28 +161,83 @@ function FeatureMeshes({ viewMode }: { viewMode: ViewMode }) {
         const pos = feature?.position ?? { x: 0, y: 0, z: 0 };
         const rot = feature?.rotation ?? { x: 0, y: 0, z: 0 };
 
+        // ─ Color en modo wizard booleano ─────────────────────────────────
+        const isTarget = booleanWizard?.targetId === featureGeom.featureId;
+        const isHovered = hoveredId === featureGeom.featureId && !!booleanWizard;
+        // Excluir el target ya elegido como herramienta
+        const isExcluded =
+          booleanWizard?.step === 'select-tool' &&
+          featureGeom.featureId === booleanWizard?.targetId;
+
+        const meshColor = isTarget
+          ? '#22d3ee' // cyan — cuerpo A elegido
+          : isHovered
+            ? '#a78bfa' // violeta — hover en wizard
+            : isSelected
+              ? '#fbbf24' // amarillo — selección normal
+              : material.color;
+
         return (
           <group
             key={featureGeom.featureId}
             position={[pos.x, pos.y, pos.z]}
             rotation={[rot.x, rot.y, rot.z]}
+            ref={(node) => {
+              if (node) meshRefs.current.set(featureGeom.featureId, node);
+              else meshRefs.current.delete(featureGeom.featureId);
+            }}
           >
             <mesh
               geometry={featureGeom.geometry}
               castShadow
               receiveShadow
-              onClick={() => {
+              onPointerOver={(e) => {
+                if (!booleanWizard || isExcluded) return;
+                e.stopPropagation();
+                setHoveredId(featureGeom.featureId);
+                document.body.style.cursor = 'pointer';
+              }}
+              onPointerOut={() => {
+                if (!booleanWizard) return;
+                setHoveredId(null);
+                document.body.style.cursor = '';
+              }}
+              onClick={(e: ThreeEvent<MouseEvent>) => {
+                // ── Modo wizard booleano ──────────────────────────────────
+                if (booleanWizard) {
+                  e.stopPropagation();
+                  if (isExcluded) return; // no puede elegir el mismo
+                  if (booleanWizard.step === 'select-target') {
+                    setBooleanTarget(featureGeom.featureId);
+                  } else if (booleanWizard.step === 'select-tool') {
+                    const targetId = booleanWizard.targetId!;
+                    const toolId = featureGeom.featureId;
+                    const operation = booleanWizard.operation;
+                    cancelBooleanWizard();
+                    setHoveredId(null);
+                    document.body.style.cursor = '';
+                    createBoolean(targetId, toolId, operation).catch((err) => {
+                      console.error('[Boolean] Error:', err);
+                    });
+                  }
+                  return;
+                }
+                // ── Selección normal ─────────────────────────────────────
+                if (selectionToolActive === false) return;
+                e.stopPropagation();
                 useFeatureStore.getState().selectFeature(featureGeom.featureId);
+                useSketchStore.getState().clearSelection();
+                useSketchStore.getState().setActiveTool('select');
               }}
             >
               <meshStandardMaterial
-                color={isSelected ? '#fbbf24' : material.color}
+                color={meshColor}
                 metalness={isRendered ? material.metalness : Math.min(material.metalness, 0.5)}
                 roughness={material.roughness}
-                opacity={viewMode === 'wireframe' ? 0.1 : material.opacity}
-                transparent={viewMode === 'wireframe' ? true : material.transparent}
-                emissive={material.emissive ?? '#000000'}
-                emissiveIntensity={material.emissiveIntensity ?? 0}
+                opacity={isExcluded ? 0.3 : viewMode === 'wireframe' ? 0.1 : material.opacity}
+                transparent={isExcluded || viewMode === 'wireframe' ? true : material.transparent}
+                emissive={isTarget ? '#22d3ee' : isHovered ? '#a78bfa' : (material.emissive ?? '#000000')}
+                emissiveIntensity={isTarget ? 0.25 : isHovered ? 0.15 : (material.emissiveIntensity ?? 0)}
                 wireframe={viewMode === 'wireframe'}
                 envMapIntensity={isRendered ? 1.0 : 0}
                 side={THREE.DoubleSide}
@@ -177,10 +255,66 @@ function FeatureMeshes({ viewMode }: { viewMode: ViewMode }) {
   );
 }
 
+/**
+ * Gizmo de transformación (axis) que se ancla a la feature 3D seleccionada.
+ * Permite moverla por el espacio del proyecto. Los cambios de posición y rotación
+ * se persisten en featureStore.updateFeature.
+ */
+function SelectionGizmo({
+  meshRefs,
+  onTransformingChange,
+}: {
+  meshRefs: React.MutableRefObject<Map<string, THREE.Group>>;
+  onTransformingChange: (transforming: boolean) => void;
+}) {
+  const selectedFeatureId = useFeatureStore((s) => s.selectedFeatureId);
+  const features = useFeatureStore((s) => s.features);
+  const updateFeature = useFeatureStore((s) => s.updateFeature);
+
+  // Forzar re-render cuando cambian los refs de meshes (feature creada/borrada).
+  // Suscribirse a `geometries` garantiza que el efecto se vuelva a evaluar.
+  const geometriesVersion = useFeatureStore((s) => s.geometries);
+  void geometriesVersion;
+
+  const target = selectedFeatureId ? meshRefs.current.get(selectedFeatureId) : undefined;
+  if (!target || !selectedFeatureId) return null;
+
+  const handleObjectChange = () => {
+    if (!target) return;
+    const feature = features.find((f) => f.id === selectedFeatureId);
+    if (!feature) return;
+    updateFeature(selectedFeatureId, {
+      position: { x: target.position.x, y: target.position.y, z: target.position.z },
+      rotation: { x: target.rotation.x, y: target.rotation.y, z: target.rotation.z },
+    });
+  };
+
+  return (
+    <TransformControls
+      object={target}
+      mode="translate"
+      onMouseDown={() => onTransformingChange(true)}
+      onMouseUp={() => onTransformingChange(false)}
+      onObjectChange={handleObjectChange}
+    />
+  );
+}
+
 export default function Canvas3D() {
   const activeTool = useSketchStore((s) => s.activeTool);
   const isDrawingMode = activeTool !== 'select';
   const placementMode = useFeatureStore((s) => s.placementMode);
+  const selectionToolActive = useUIStore((s) => s.selectionToolActive);
+  const extrudePreviewActive = useUIStore((s) => s.extrudePreviewActive);
+  const booleanWizardActive = useUIStore((s) => !!s.booleanWizard);
+
+  // Map de refs por feature, alimentado por <FeatureMeshes />.
+  // Usado por <SelectionGizmo /> para anclar el TransformControls al objeto correcto.
+  const meshRefs = useRef<Map<string, THREE.Group>>(new Map());
+
+  // Mientras el usuario arrastra el gizmo, deshabilitamos OrbitControls
+  // para que la cámara no se mueva.
+  const [isTransforming, setIsTransforming] = useState(false);
 
   // ─ Render store ──────────────────────────────────────────────────
   const viewMode = useRenderStore((s) => s.viewMode);
@@ -280,6 +414,9 @@ export default function Canvas3D() {
         </div>
       )}
 
+      {/* HUD de selección gráfica booleana */}
+      <BooleanSelectionHUD />
+
       <Canvas
         camera={{
           position: [10, 10, 10],
@@ -289,6 +426,7 @@ export default function Canvas3D() {
         }}
         shadows={shadowsEnabled}
         gl={{ antialias: true, preserveDrawingBuffer: true }}
+        style={{ cursor: booleanWizardActive ? 'crosshair' : undefined }}
       >
         {/* Configuración del renderer (tone mapping, exposición) */}
         <RendererSetup />
@@ -344,10 +482,10 @@ export default function Canvas3D() {
           followCamera={false}
         />
 
-        {/* Controles de cámara — deshabilitados mientras se dibuja */}
+        {/* Controles de cámara — deshabilitados mientras se dibuja o se transforma */}
         <OrbitControls
           makeDefault
-          enabled={!isDrawingMode}
+          enabled={!isDrawingMode && !isTransforming && !extrudePreviewActive}
           enableDamping
           dampingFactor={0.05}
           rotateSpeed={0.5}
@@ -361,13 +499,21 @@ export default function Canvas3D() {
         </GizmoHelper>
 
         {/* Features 3D (extrusiones, revoluciones, etc.) */}
-        <FeatureMeshes viewMode={viewMode} />
+        <FeatureMeshes viewMode={viewMode} meshRefs={meshRefs} />
+
+        {/* Gizmo de transformación (axis) sobre la figura seleccionada */}
+        {selectionToolActive !== false && !extrudePreviewActive && !booleanWizardActive && (
+          <SelectionGizmo meshRefs={meshRefs} onTransformingChange={setIsTransforming} />
+        )}
 
         {/* Plano de placement para click-to-place */}
         <PlacementPlane />
 
         {/* Sketch 2D en el plano 3D */}
-        <SketchIn3D />
+        <SketchIn3D onTransformingChange={setIsTransforming} />
+
+        {/* Gizmo de preview interactivo de extrusión (flecha arrastrable) */}
+        <ExtrudePreviewGizmo onTransformingChange={setIsTransforming} />
 
         {/* Plano para sombras */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
@@ -375,6 +521,9 @@ export default function Canvas3D() {
           <shadowMaterial opacity={0.3} />
         </mesh>
       </Canvas>
+
+      {/* HUD de preview de extrusión (overlay React DOM, fuera del canvas WebGL) */}
+      <ExtrudePreviewHUD />
     </div>
   );
 }

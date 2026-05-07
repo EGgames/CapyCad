@@ -8,11 +8,14 @@
 
 import initOpenCascade from 'opencascade.js';
 import opencascadeWasm from 'opencascade.js/dist/opencascade.full.wasm?url';
-import type { SketchEntity, Line, Circle, Rectangle, Arc } from '@stl-model/shared-types';
+import type { SketchEntity, Line, Circle, Rectangle, Arc, Polygon } from '@stl-model/shared-types';
 
 // Los tipos de OpenCascade.js no cubren todos los constructores de la API runtime.
 let oc: any = null;
 let isInitialized = false;
+
+/** Píxeles por unidad world (debe coincidir con PPU de ExtrudePreviewGizmo) */
+const PPU_WORKER = 50;
 
 interface WorkerMessage {
   id: string;
@@ -40,6 +43,8 @@ interface ExtrudePayload {
   entities: SketchEntity[];
   distance: number;
   direction: 'positive' | 'negative' | 'both';
+  canvasWidth?: number;
+  canvasHeight?: number;
 }
 
 interface FilletPayload {
@@ -83,10 +88,20 @@ interface BooleanPayload {
   targetEntities: SketchEntity[];
   targetDistance: number;
   targetDirection: 'positive' | 'negative' | 'both';
+  targetCanvasWidth?: number;
+  targetCanvasHeight?: number;
+  /** Traslación a aplicar al sólido objetivo (Three.js coords) */
+  targetTranslation?: { x: number; y: number; z: number };
   toolEntities: SketchEntity[];
   toolDistance: number;
   toolDirection: 'positive' | 'negative' | 'both';
+  toolCanvasWidth?: number;
+  toolCanvasHeight?: number;
+  /** Traslación a aplicar al sólido herramienta (Three.js coords) */
+  toolTranslation?: { x: number; y: number; z: number };
   operation: 'union' | 'subtract' | 'intersect';
+  canvasWidth?: number;
+  canvasHeight?: number;
 }
 
 interface DraftPayload {
@@ -155,18 +170,32 @@ async function initializeOpenCascade(): Promise<void> {
 }
 
 /**
- * Convierte SketchEntity a TopoDS_Wire (contorno cerrado)
+ * Convierte SketchEntity a TopoDS_Wire (contorno cerrado).
+ *
+ * Las entidades llegan en coordenadas Fabric.js (píxeles, origen en esquina
+ * superior-izquierda del canvas). Las normalizamos a unidades world antes de
+ * pasarlas a OCC:
+ *   world_x = (px - cw/2) / PPU_WORKER
+ *   world_y = (ch/2 - py) / PPU_WORKER   ← flip Y (canvas Y↓, world Y↑)
+ *
+ * La cara queda en el plano XY de OCC (z=0).  Tras `rotateGeometry90` en el
+ * caller, ese plano XY pasa a ser el plano XZ de Three.js (Y-up), que es lo
+ * que muestra el preview de extrusión.
  */
-function entitiesToWire(entities: SketchEntity[]): any {
+function entitiesToWire(entities: SketchEntity[], cw = 800, ch = 600): any {
   if (!oc) throw new Error('OpenCascade not initialized');
+
+  // Conversión píxeles → world (misma lógica que ExtrudePreviewGizmo)
+  const wx = (px: number) => (px - cw / 2) / PPU_WORKER;
+  const wy = (py: number) => (ch / 2 - py) / PPU_WORKER;
 
   // Caso especial: único círculo → construir el wire desde el edge usando la API
   // de OCC que acepta un edge cerrado directamente, más fiable que el Add() genérico.
   if (entities.length === 1 && entities[0].type === 'circle') {
     const circle = entities[0] as Circle;
-    const center = new oc.gp_Pnt_3(circle.center.x, circle.center.y, 0);
+    const center = new oc.gp_Pnt_3(wx(circle.center.x), wy(circle.center.y), 0);
     const axis = new oc.gp_Ax2_3(center, new oc.gp_Dir_4(0, 0, 1));
-    const gpCirc = new oc.gp_Circ_2(axis, circle.radius);
+    const gpCirc = new oc.gp_Circ_2(axis, circle.radius / PPU_WORKER);
     const edge = new oc.BRepBuilderAPI_MakeEdge_8(gpCirc).Edge();
     // BRepBuilderAPI_MakeWire con el edge en el constructor es más fiable
     // para aristas cerradas que el método Add() en un wire vacío.
@@ -177,6 +206,10 @@ function entitiesToWire(entities: SketchEntity[]): any {
     return wm.Wire();
   }
 
+  // Use non-numbered (destructured) BRepBuilderAPI_MakeWire — its Add() method
+  // accepts TopoDS_Shape/Edge directly. The numbered Add_1/Add_2 variants have
+  // stricter type expectations that cause BindingErrors with the Edge objects
+  // returned by BRepBuilderAPI_MakeEdge_N(...).Edge().
   const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
 
   for (const entity of entities) {
@@ -185,17 +218,17 @@ function entitiesToWire(entities: SketchEntity[]): any {
     switch (entity.type) {
       case 'line': {
         const line = entity as Line;
-        const p1 = new oc.gp_Pnt_3(line.start.x, line.start.y, 0);
-        const p2 = new oc.gp_Pnt_3(line.end.x, line.end.y, 0);
+        const p1 = new oc.gp_Pnt_3(wx(line.start.x), wy(line.start.y), 0);
+        const p2 = new oc.gp_Pnt_3(wx(line.end.x), wy(line.end.y), 0);
         edge = new oc.BRepBuilderAPI_MakeEdge_3(p1, p2).Edge();
         break;
       }
 
       case 'circle': {
         const circle = entity as Circle;
-        const center = new oc.gp_Pnt_3(circle.center.x, circle.center.y, 0);
+        const center = new oc.gp_Pnt_3(wx(circle.center.x), wy(circle.center.y), 0);
         const axis = new oc.gp_Ax2_3(center, new oc.gp_Dir_4(0, 0, 1));
-        const gpCirc = new oc.gp_Circ_2(axis, circle.radius);
+        const gpCirc = new oc.gp_Circ_2(axis, circle.radius / PPU_WORKER);
         edge = new oc.BRepBuilderAPI_MakeEdge_8(gpCirc).Edge();
         break;
       }
@@ -205,34 +238,57 @@ function entitiesToWire(entities: SketchEntity[]): any {
         const { x: x1, y: y1 } = rect.topLeft;
         const { x: x2, y: y2 } = rect.bottomRight;
 
-        // Crear los 4 vértices del rectángulo
-        const p1 = new oc.gp_Pnt_3(x1, y1, 0);
-        const p2 = new oc.gp_Pnt_3(x2, y1, 0);
-        const p3 = new oc.gp_Pnt_3(x2, y2, 0);
-        const p4 = new oc.gp_Pnt_3(x1, y2, 0);
+        const p1 = new oc.gp_Pnt_3(wx(x1), wy(y1), 0);
+        const p2 = new oc.gp_Pnt_3(wx(x2), wy(y1), 0);
+        const p3 = new oc.gp_Pnt_3(wx(x2), wy(y2), 0);
+        const p4 = new oc.gp_Pnt_3(wx(x1), wy(y2), 0);
 
-        // Crear las 4 aristas
-        const e1 = new oc.BRepBuilderAPI_MakeEdge_3(p1, p2).Edge();
-        const e2 = new oc.BRepBuilderAPI_MakeEdge_3(p2, p3).Edge();
-        const e3 = new oc.BRepBuilderAPI_MakeEdge_3(p3, p4).Edge();
-        const e4 = new oc.BRepBuilderAPI_MakeEdge_3(p4, p1).Edge();
-
-        wireBuilder.Add(e1);
-        wireBuilder.Add(e2);
-        wireBuilder.Add(e3);
-        wireBuilder.Add(e4);
+        wireBuilder.Add_1(new oc.BRepBuilderAPI_MakeEdge_3(p1, p2).Edge());
+        wireBuilder.Add_1(new oc.BRepBuilderAPI_MakeEdge_3(p2, p3).Edge());
+        wireBuilder.Add_1(new oc.BRepBuilderAPI_MakeEdge_3(p3, p4).Edge());
+        wireBuilder.Add_1(new oc.BRepBuilderAPI_MakeEdge_3(p4, p1).Edge());
         continue;
       }
 
       case 'arc': {
         const arc = entity as Arc;
-        const center = new oc.gp_Pnt_3(arc.center.x, arc.center.y, 0);
+        const center = new oc.gp_Pnt_3(wx(arc.center.x), wy(arc.center.y), 0);
         const axis = new oc.gp_Ax2_3(center, new oc.gp_Dir_4(0, 0, 1));
-        const gpCirc = new oc.gp_Circ_2(axis, arc.radius);
+        const gpCirc = new oc.gp_Circ_2(axis, arc.radius / PPU_WORKER);
 
-        // TODO: Implementar arco con ángulos start/end
-        edge = new oc.BRepBuilderAPI_MakeEdge_8(gpCirc).Edge();
+        // arc.startAngle / endAngle son radianes desde Math.atan2 en Fabric (Y↓).
+        // Tras el flip de Y (wy), el ángulo OCC (Y↑) = negado del ángulo Fabric.
+        // GC_MakeArcOfCircle_3: counterclockwise de Alpha1 a Alpha2 (Sense=true).
+        const alpha1 = -arc.startAngle;
+        const alpha2 = -arc.endAngle;
+        try {
+          const arcGeom = new oc.GC_MakeArcOfCircle_3(gpCirc, alpha1, alpha2, true);
+          edge = new oc.BRepBuilderAPI_MakeEdge_24(arcGeom.Value()).Edge();
+        } catch {
+          // Fallback: círculo completo si los ángulos son inválidos
+          edge = new oc.BRepBuilderAPI_MakeEdge_8(gpCirc).Edge();
+        }
         break;
+      }
+
+      case 'polygon': {
+        const poly = entity as Polygon;
+        const cx_occ = wx(poly.center.x);
+        const cy_occ = wy(poly.center.y);
+        const r_occ = poly.radius / PPU_WORKER;
+        const rot = poly.rotation ?? 0;
+        const n = poly.sides;
+
+        for (let i = 0; i < n; i++) {
+          const a1 = rot + (i / n) * Math.PI * 2 - Math.PI / 2;
+          const a2 = rot + ((i + 1) / n) * Math.PI * 2 - Math.PI / 2;
+          const vx1 = cx_occ + Math.cos(a1) * r_occ;
+          const vy1 = cy_occ - Math.sin(a1) * r_occ;
+          const vx2 = cx_occ + Math.cos(a2) * r_occ;
+          const vy2 = cy_occ - Math.sin(a2) * r_occ;
+          wireBuilder.Add_1(new oc.BRepBuilderAPI_MakeEdge_3(new oc.gp_Pnt_3(vx1, vy1, 0), new oc.gp_Pnt_3(vx2, vy2, 0)).Edge());
+        }
+        continue;
       }
 
       default:
@@ -241,7 +297,7 @@ function entitiesToWire(entities: SketchEntity[]): any {
     }
 
     if (edge) {
-      wireBuilder.Add(edge);
+      wireBuilder.Add_1(edge);
     }
   }
 
@@ -257,23 +313,50 @@ function entitiesToWire(entities: SketchEntity[]): any {
 /**
  * Construye un TopoDS_Shape extruido a partir de entidades y parámetros.
  * Helper compartido entre executeExtrude, executeFillet y executeChamfer.
+ *
+ * @param cw  Ancho del canvas en píxeles (para normalizar coordenadas)
+ * @param ch  Alto del canvas en píxeles (para normalizar coordenadas)
  */
 function buildExtrudedShape(
   entities: SketchEntity[],
   distance: number,
-  direction: 'positive' | 'negative' | 'both'
+  direction: 'positive' | 'negative' | 'both',
+  cw = 800,
+  ch = 600
 ): any {
   if (!oc) throw new Error('OpenCascade not initialized');
 
-  const wire = entitiesToWire(entities);
+  const wire = entitiesToWire(entities, cw, ch);
 
   const faceMaker = new oc.BRepBuilderAPI_MakeFace_15(wire, true);
   if (!faceMaker.IsDone()) {
     throw new Error(
-      `[CAD] No se pudo crear la cara desde el wire (error OCC: ${faceMaker.Error()})`
+      `[CAD] No se pudo crear la cara desde el wire (error OCC: ${faceMaker.Error?.()})`
     );
   }
   const face = faceMaker.Face();
+
+  if (direction === 'both') {
+    // Extruir en ambas direcciones: trasladar la cara −distance en Z,
+    // luego extruir 2*distance en +Z → sólido simétrico respecto al plano del sketch.
+    const translator = new oc.BRepBuilderAPI_Transform_2(
+      face,
+      (() => {
+        const t = new oc.gp_Trsf_1();
+        t.SetTranslation_1(new oc.gp_Vec_4(0, 0, -distance));
+        return t;
+      })(),
+      false
+    );
+    const movedFace = translator.Shape();
+    const prism = new oc.BRepPrimAPI_MakePrism_1(
+      movedFace,
+      new oc.gp_Vec_4(0, 0, distance * 2),
+      false,
+      true
+    );
+    return prism.Shape();
+  }
 
   const signedDistance = direction === 'negative' ? -distance : distance;
   const extrusionVec = new oc.gp_Vec_4(0, 0, signedDistance);
@@ -289,8 +372,10 @@ function executeExtrude(payload: ExtrudePayload): GeometryData {
   if (!oc) throw new Error('OpenCascade not initialized');
 
   try {
-    const shape = buildExtrudedShape(payload.entities, payload.distance, payload.direction);
-    return triangulateShape(shape);
+    const cw = payload.canvasWidth ?? 800;
+    const ch = payload.canvasHeight ?? 600;
+    const shape = buildExtrudedShape(payload.entities, payload.distance, payload.direction, cw, ch);
+    return rotateGeometry90(triangulateShape(shape));
   } catch (error) {
     console.error('[CAD Worker] Extrude failed:', error);
     throw error;
@@ -669,16 +754,41 @@ function executeBoolean(payload: BooleanPayload): GeometryData {
   if (!oc) throw new Error('OpenCascade not initialized');
 
   try {
-    const targetShape = buildExtrudedShape(
+    const targetCW = payload.targetCanvasWidth ?? payload.canvasWidth ?? 800;
+    const targetCH = payload.targetCanvasHeight ?? payload.canvasHeight ?? 600;
+    const toolCW = payload.toolCanvasWidth ?? payload.canvasWidth ?? 800;
+    const toolCH = payload.toolCanvasHeight ?? payload.canvasHeight ?? 600;
+
+    let targetShape = buildExtrudedShape(
       payload.targetEntities,
       payload.targetDistance,
-      payload.targetDirection
+      payload.targetDirection,
+      targetCW,
+      targetCH
     );
-    const toolShape = buildExtrudedShape(
+    let toolShape = buildExtrudedShape(
       payload.toolEntities,
       payload.toolDistance,
-      payload.toolDirection
+      payload.toolDirection,
+      toolCW,
+      toolCH
     );
+
+    // Aplicar traslaciones en espacio OCC.
+    // Conversión Three.js → OCC: (dx, dy, dz)_three → (dx, -dz, dy)_occ
+    const applyTranslation = (shape: any, t: { x: number; y: number; z: number }) => {
+      if (t.x === 0 && t.y === 0 && t.z === 0) return shape;
+      const trsf = new oc.gp_Trsf_1();
+      trsf.SetTranslation_1(new oc.gp_Vec_4(t.x, -t.z, t.y));
+      return new oc.BRepBuilderAPI_Transform_2(shape, trsf, false).Shape();
+    };
+
+    if (payload.targetTranslation) {
+      targetShape = applyTranslation(targetShape, payload.targetTranslation);
+    }
+    if (payload.toolTranslation) {
+      toolShape = applyTranslation(toolShape, payload.toolTranslation);
+    }
 
     let resultShape: any;
     const progressRange = new oc.Message_ProgressRange_1();
@@ -690,7 +800,7 @@ function executeBoolean(payload: BooleanPayload): GeometryData {
       resultShape = new oc.BRepAlgoAPI_Common_3(targetShape, toolShape, progressRange).Shape();
     }
 
-    return triangulateShape(resultShape);
+    return rotateGeometry90(triangulateShape(resultShape));
   } catch (error) {
     console.error('[CAD Worker] Boolean failed:', error);
     throw error;
@@ -785,6 +895,31 @@ function executePrimitiveTorus(payload: TorusPayload): GeometryData {
 /**
  * Triangula un TopoDS_Shape y retorna buffers para Three.js
  */
+/**
+ * Aplica rotación -90° alrededor del eje X a posiciones y normales:
+ *   (x, y, z) → (x, z, -y)
+ *
+ * Convierte del espacio OCC (cara en plano XY, extrusión en +Z)
+ * al espacio Three.js (cara en plano XZ a Y=0, extrusión en +Y).
+ * Equivalente al `geo.rotateX(-Math.PI / 2)` que aplica el preview.
+ */
+function rotateGeometry90(data: GeometryData): GeometryData {
+  const { positions, normals } = data;
+  for (let i = 0; i < positions.length; i += 3) {
+    const y = positions[i + 1];
+    const z = positions[i + 2];
+    positions[i + 1] = z;
+    positions[i + 2] = -y;
+  }
+  for (let i = 0; i < normals.length; i += 3) {
+    const ny = normals[i + 1];
+    const nz = normals[i + 2];
+    normals[i + 1] = nz;
+    normals[i + 2] = -ny;
+  }
+  return data;
+}
+
 function triangulateShape(shape: any): GeometryData {
   if (!oc) throw new Error('OpenCascade not initialized');
 

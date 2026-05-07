@@ -11,6 +11,7 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import { FeatureType } from '@stl-model/shared-types';
+import { useSketchStore } from './sketchStore';
 import type {
   EntityId,
   Feature,
@@ -290,7 +291,22 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
 
   deleteFeature: (featureId) => {
     set((state) => {
-      const newFeatures = state.features.filter((f) => f.id !== featureId);
+      const deletedFeature = state.features.find((f) => f.id === featureId);
+
+      // Teoría de conjuntos: si se elimina una booleana, restaurar los operandos
+      // (target y tool) para que vuelvan a ser visibles.
+      const sourcesToRestore: Set<string> = new Set();
+      if (deletedFeature?.type === FeatureType.BOOLEAN) {
+        const bool = deletedFeature as BooleanFeature;
+        sourcesToRestore.add(bool.targetId);
+        sourcesToRestore.add(bool.toolId);
+      }
+
+      const newFeatures = state.features
+        .filter((f) => f.id !== featureId)
+        .map((f) =>
+          sourcesToRestore.has(f.id) ? { ...f, suppressed: false } : f
+        );
       const newGeometries = new Map(state.geometries);
 
       // Limpiar geometría
@@ -404,12 +420,13 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       set({ processingProgress: 50 });
 
       // Ejecutar extrusión
-      const geometryData = await worker.extrude(entities, distance, direction);
+      const { canvasWidth, canvasHeight } = useSketchStore.getState();
+      const geometryData = await worker.extrude(entities, distance, direction, canvasWidth, canvasHeight);
 
       set({ processingProgress: 80 });
 
       // Convertir a BufferGeometry de Three.js
-      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute } =
+      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute, Vector3 } =
         await import('three');
 
       const geometry = new BufferGeometry();
@@ -417,6 +434,13 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       geometry.setAttribute('normal', new Float32BufferAttribute(geometryData.normals, 3));
       geometry.setIndex(new Uint32BufferAttribute(geometryData.indices, 1));
       geometry.computeVertexNormals(); // Recalcular normales correctamente
+
+      // Centrar la geometría en el origen para que el gizmo de transformación
+      // (TransformControls) aparezca en el centro visual del mesh.
+      geometry.computeBoundingBox();
+      const geomCenter = new Vector3();
+      geometry.boundingBox!.getCenter(geomCenter);
+      geometry.translate(-geomCenter.x, -geomCenter.y, -geomCenter.z);
 
       set({ processingProgress: 90 });
 
@@ -438,6 +462,10 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
         },
         distance,
         direction,
+        position: { x: geomCenter.x, y: geomCenter.y, z: geomCenter.z },
+        geometryCenter: { x: geomCenter.x, y: geomCenter.y, z: geomCenter.z },
+        sketchCanvasWidth: canvasWidth,
+        sketchCanvasHeight: canvasHeight,
       };
 
       // Agregar al store
@@ -927,25 +955,62 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
       await worker.initialize();
       set({ processingProgress: 50 });
 
+      // Calcular traslaciones: delta entre posición actual y centro natural de la geometría.
+      // Si el usuario movió la figura con el gizmo, feature.position ≠ geometryCenter.
+      const zero = { x: 0, y: 0, z: 0 };
+      const targetGC = targetFeature.geometryCenter ?? zero;
+      const toolGC = toolFeature.geometryCenter ?? zero;
+      const targetPos = targetFeature.position ?? targetGC;
+      const toolPos = toolFeature.position ?? toolGC;
+
+      const targetTranslation = {
+        x: targetPos.x - targetGC.x,
+        y: targetPos.y - targetGC.y,
+        z: targetPos.z - targetGC.z,
+      };
+      const toolTranslation = {
+        x: toolPos.x - toolGC.x,
+        y: toolPos.y - toolGC.y,
+        z: toolPos.z - toolGC.z,
+      };
+
+      const { canvasWidth: defaultCW, canvasHeight: defaultCH } = useSketchStore.getState();
+      const targetCW = targetFeature.sketchCanvasWidth ?? defaultCW;
+      const targetCH = targetFeature.sketchCanvasHeight ?? defaultCH;
+      const toolCW = toolFeature.sketchCanvasWidth ?? defaultCW;
+      const toolCH = toolFeature.sketchCanvasHeight ?? defaultCH;
+
       const geometryData = await worker.booleanOp(
         targetFeature.sketch.entities,
         targetFeature.distance,
         targetFeature.direction,
+        targetTranslation,
+        targetCW,
+        targetCH,
         toolFeature.sketch.entities,
         toolFeature.distance,
         toolFeature.direction,
+        toolTranslation,
+        toolCW,
+        toolCH,
         operation
       );
 
       set({ processingProgress: 80 });
 
-      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute } =
+      const { BufferGeometry, Float32BufferAttribute, Uint32BufferAttribute, Vector3 } =
         await import('three');
       const geometry = new BufferGeometry();
       geometry.setAttribute('position', new Float32BufferAttribute(geometryData.positions, 3));
       geometry.setAttribute('normal', new Float32BufferAttribute(geometryData.normals, 3));
       geometry.setIndex(new Uint32BufferAttribute(geometryData.indices, 1));
       geometry.computeVertexNormals();
+
+      // Centrar la geometría del resultado para que el gizmo quede en el centro visual.
+      geometry.computeBoundingBox();
+      const geomCenter = new Vector3();
+      geometry.boundingBox!.getCenter(geomCenter);
+      geometry.translate(-geomCenter.x, -geomCenter.y, -geomCenter.z);
 
       set({ processingProgress: 90 });
 
@@ -961,10 +1026,36 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
         operation,
         targetId: targetFeatureId,
         toolId: toolFeatureId,
+        position: { x: geomCenter.x, y: geomCenter.y, z: geomCenter.z },
       };
 
-      get().addFeature(feature, geometry);
-      set({ processingProgress: 100 });
+      // Teoría de conjuntos: A∪B, A\B, A∩B → el resultado REEMPLAZA a los
+      // operandos. Suprimir target y tool para que solo se renderice el resultado.
+      set((state) => {
+        const newFeatures = [
+          ...state.features.map((f) =>
+            f.id === targetFeatureId || f.id === toolFeatureId
+              ? { ...f, suppressed: true }
+              : f
+          ),
+          feature,
+        ];
+        const newGeometries = new Map(state.geometries);
+        newGeometries.set(feature.id, { featureId: feature.id, geometry, visible: true });
+        const newHistory = state.history.slice(0, state.historyIndex + 1);
+        newHistory.push(newFeatures);
+        const newIndex = newHistory.length - 1;
+        return {
+          features: newFeatures,
+          geometries: newGeometries,
+          history: newHistory,
+          historyIndex: newIndex,
+          canUndo: newIndex > 0,
+          canRedo: false,
+          selectedFeatureId: feature.id,
+          processingProgress: 100,
+        };
+      });
       return featureId;
     } catch (error) {
       console.error('[Feature Store] Boolean failed:', error);

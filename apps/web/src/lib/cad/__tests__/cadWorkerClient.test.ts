@@ -1047,9 +1047,15 @@ describe('CADWorkerClient - Operación de Boolean', () => {
       RECT_ENTITIES,
       10,
       'positive',
+      { x: 0, y: 0, z: 0 },
+      800,
+      600,
       RECT_ENTITIES,
       5,
       'positive',
+      { x: 0, y: 0, z: 0 },
+      800,
+      600,
       'union'
     );
 
@@ -1065,9 +1071,15 @@ describe('CADWorkerClient - Operación de Boolean', () => {
       RECT_ENTITIES,
       10,
       'positive',
+      { x: 0, y: 0, z: 0 },
+      800,
+      600,
       RECT_ENTITIES,
       5,
       'both',
+      { x: 0, y: 0, z: 0 },
+      800,
+      600,
       'subtract'
     );
     expect(geometry).toBeDefined();
@@ -1078,9 +1090,15 @@ describe('CADWorkerClient - Operación de Boolean', () => {
       RECT_ENTITIES,
       10,
       'negative',
+      { x: 0, y: 0, z: 0 },
+      800,
+      600,
       RECT_ENTITIES,
       10,
       'negative',
+      { x: 0, y: 0, z: 0 },
+      800,
+      600,
       'intersect'
     );
     expect(geometry).toBeDefined();
@@ -1089,7 +1107,7 @@ describe('CADWorkerClient - Operación de Boolean', () => {
   it('debe lanzar error si no está inicializado', async () => {
     const uninit = new CADWorkerClient();
     await expect(
-      uninit.booleanOp(RECT_ENTITIES, 10, 'positive', RECT_ENTITIES, 5, 'positive', 'union')
+      uninit.booleanOp(RECT_ENTITIES, 10, 'positive', { x: 0, y: 0, z: 0 }, 800, 600, RECT_ENTITIES, 5, 'positive', { x: 0, y: 0, z: 0 }, 800, 600, 'union')
     ).rejects.toThrow('CAD Worker not initialized');
     uninit.terminate();
   });
@@ -1102,7 +1120,7 @@ describe('CADWorkerClient - Operación de Boolean', () => {
       originalPostMessage(data);
     };
 
-    await client.booleanOp(RECT_ENTITIES, 10, 'positive', RECT_ENTITIES, 5, 'both', 'subtract');
+    await client.booleanOp(RECT_ENTITIES, 10, 'positive', { x: 1, y: 0, z: 0 }, 800, 600, RECT_ENTITIES, 5, 'both', { x: 0, y: 0, z: 0 }, 800, 600, 'subtract');
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1111,6 +1129,7 @@ describe('CADWorkerClient - Operación de Boolean', () => {
           targetEntities: RECT_ENTITIES,
           targetDistance: 10,
           targetDirection: 'positive',
+          targetTranslation: { x: 1, y: 0, z: 0 },
           toolEntities: RECT_ENTITIES,
           toolDistance: 5,
           toolDirection: 'both',
@@ -1151,7 +1170,7 @@ describe('CADWorkerClient - Operación de Boolean', () => {
     const errClient = new CADWorkerClient();
     await errClient.initialize();
     await expect(
-      errClient.booleanOp(RECT_ENTITIES, 10, 'positive', RECT_ENTITIES, 5, 'positive', 'union')
+      errClient.booleanOp(RECT_ENTITIES, 10, 'positive', { x: 0, y: 0, z: 0 }, 800, 600, RECT_ENTITIES, 5, 'positive', { x: 0, y: 0, z: 0 }, 800, 600, 'union')
     ).rejects.toThrow('Boolean operation failed on empty body');
     errClient.terminate();
   });

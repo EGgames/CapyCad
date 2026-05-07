@@ -59,7 +59,7 @@ type Tool3DAction =
   | 'primitive_torus';
 
 export default function Toolbar3D() {
-  const { activeSketch, setEditMode } = useSketchStore();
+  const { activeSketch, setEditMode, selectedEntities } = useSketchStore();
   const {
     createExtrude,
     createRevolve,
@@ -115,8 +115,19 @@ export default function Toolbar3D() {
 
   const handleExtrude = async (distance: number, direction: 'positive' | 'negative' | 'both') => {
     if (!requireSketch()) return;
+    if (selectedEntities.length === 0) {
+      alert('Selecciona al menos una entidad del sketch 2D antes de extruir');
+      return;
+    }
+    const entitiesToExtrude = activeSketch!.entities.filter((e) =>
+      selectedEntities.includes(e.id)
+    );
+    if (entitiesToExtrude.length === 0) {
+      alert('Las entidades seleccionadas no se encontraron en el sketch activo');
+      return;
+    }
     try {
-      await createExtrude(activeSketch!.id, activeSketch!.entities, distance, direction);
+      await createExtrude(activeSketch!.id, entitiesToExtrude, distance, direction);
       setEditMode('3d');
     } catch (error) {
       console.error('Error al extruir:', error);
@@ -424,27 +435,42 @@ export default function Toolbar3D() {
         >
           3D:
         </span>
-        {tools3D.map((tool) => (
-          <button
-            key={tool.action}
-            className={cn(
-              isVertical
-                ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
-                : 'flex h-9 w-9 items-center justify-center rounded-md',
-              isProcessing
-                ? 'cursor-wait opacity-50'
-                : tool.needsFeature && !selectedFeatureId
-                  ? 'opacity-40 hover:bg-muted'
-                  : 'hover:bg-muted'
-            )}
-            title={tool.label}
-            onClick={() => handle3DToolClick(tool.action)}
-            disabled={isProcessing}
-          >
-            <tool.icon className="h-4 w-4" />
-            {isVertical && <span className="text-sm">{tool.label}</span>}
-          </button>
-        ))}
+        {tools3D.map((tool) => {
+          const lacksFeature = !!tool.needsFeature && !selectedFeatureId;
+          const lacksSketch =
+            (tool.action === 'extrude' ||
+              tool.action === 'revolve' ||
+              tool.action === 'sweep') &&
+            (!activeSketch || activeSketch.entities.length === 0);
+          const disabledByPrereq = lacksFeature || lacksSketch;
+          return (
+            <button
+              key={tool.action}
+              className={cn(
+                isVertical
+                  ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
+                  : 'flex h-9 w-9 items-center justify-center rounded-md',
+                isProcessing
+                  ? 'cursor-wait opacity-50'
+                  : disabledByPrereq
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:bg-muted'
+              )}
+              title={
+                lacksFeature
+                  ? `${tool.label} — requiere una figura 3D seleccionada`
+                  : lacksSketch
+                    ? `${tool.label} — requiere un sketch 2D con entidades`
+                    : tool.label
+              }
+              onClick={() => handle3DToolClick(tool.action)}
+              disabled={isProcessing || disabledByPrereq}
+            >
+              <tool.icon className="h-4 w-4" />
+              {isVertical && <span className="text-sm">{tool.label}</span>}
+            </button>
+          );
+        })}
       </div>
 
       {/* Separador */}

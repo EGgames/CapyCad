@@ -141,7 +141,9 @@ export class CADWorkerClient {
   async extrude(
     entities: SketchEntity[],
     distance: number,
-    direction: 'positive' | 'negative' | 'both' = 'positive'
+    direction: 'positive' | 'negative' | 'both' = 'positive',
+    canvasWidth = 800,
+    canvasHeight = 600
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
       throw new Error('CAD Worker not initialized. Call initialize() first.');
@@ -155,7 +157,7 @@ export class CADWorkerClient {
     this.worker?.postMessage({
       id,
       type: 'extrude',
-      payload: { entities, distance, direction },
+      payload: { entities, distance, direction, canvasWidth, canvasHeight },
     });
 
     return promise;
@@ -343,9 +345,15 @@ export class CADWorkerClient {
     targetEntities: SketchEntity[],
     targetDistance: number,
     targetDirection: 'positive' | 'negative' | 'both',
+    targetTranslation: { x: number; y: number; z: number },
+    targetCanvasWidth: number,
+    targetCanvasHeight: number,
     toolEntities: SketchEntity[],
     toolDistance: number,
     toolDirection: 'positive' | 'negative' | 'both',
+    toolTranslation: { x: number; y: number; z: number },
+    toolCanvasWidth: number,
+    toolCanvasHeight: number,
     operation: 'union' | 'subtract' | 'intersect'
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
@@ -364,9 +372,15 @@ export class CADWorkerClient {
         targetEntities,
         targetDistance,
         targetDirection,
+        targetTranslation,
+        targetCanvasWidth,
+        targetCanvasHeight,
         toolEntities,
         toolDistance,
         toolDirection,
+        toolTranslation,
+        toolCanvasWidth,
+        toolCanvasHeight,
         operation,
       },
     });

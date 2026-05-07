@@ -1,19 +1,9 @@
 /**
- * Integration test: ToolbarBoolean → BooleanDialog → createBoolean
+ * Integration test: ToolbarBoolean — 3 direct operation buttons + boolean wizard
  *
- * Reproduces the bug "las booleanas no funcionan":
- * Originally the BooleanDialog initialised target/tool ids from `featureNames` only
- * once on mount; when features were added later, the selects looked populated but
- * internal state stayed empty, so the "Aplicar Booleana" button stayed disabled
- * and no boolean was ever created.
- *
- * This test:
- *  1. Mounts ToolbarBoolean with no features → button is disabled, dialog shows
- *     the "no hay extrusiones" message.
- *  2. Adds two extrude features to the store → button enables.
- *  3. Opens the dialog, clicks Aplicar Booleana → asserts createBoolean was
- *     invoked with the two feature ids.
- *  4. Confirms non-extrude features (e.g. primitives) are NOT offered as options.
+ * New UI: instead of a single "Booleana" button opening a dialog, there are
+ * 3 buttons (Union, Subtract, Intersect) that each start a graphical
+ * selection wizard in the canvas.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -21,6 +11,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { BufferGeometry } from 'three';
 import { FeatureType, SketchEntityType, type ExtrudeFeature, type BoxFeature, type Line } from '@stl-model/shared-types';
 import { useFeatureStore } from '@/stores/featureStore';
+import { useUIStore } from '@/stores/uiStore';
 import ToolbarBoolean from '../ToolbarBoolean';
 
 const mockGeometryData = {
@@ -67,7 +58,7 @@ const mkExtrude = (id: string, name: string): ExtrudeFeature => ({
 
 const mkBox = (id: string): BoxFeature => ({
   id,
-  type: FeatureType.BOX,
+  type: FeatureType.PRIMITIVE_BOX,
   name: `Box ${id}`,
   parentId: null,
   visible: true,
@@ -91,20 +82,30 @@ describe('ToolbarBoolean — integración', () => {
       isProcessing: false,
       processingProgress: 0,
     });
+    useUIStore.setState({ booleanWizard: null });
   });
 
   it('booleanButton_whenNoExtrudes_thenIsDisabled', () => {
     render(<ToolbarBoolean />);
-    const btn = screen.getByTestId('boolean-open-btn') as HTMLButtonElement;
-    expect(btn).toBeInTheDocument();
-    // Button is rendered but flagged as not-runnable via title hint
-    expect(btn.title).toMatch(/al menos 2 extrusiones/i);
+    // Los 3 botones deben estar presentes
+    const unionBtn = screen.getByTestId('boolean-union-btn') as HTMLButtonElement;
+    const subtractBtn = screen.getByTestId('boolean-subtract-btn') as HTMLButtonElement;
+    const intersectBtn = screen.getByTestId('boolean-intersect-btn') as HTMLButtonElement;
+    expect(unionBtn).toBeInTheDocument();
+    expect(subtractBtn).toBeInTheDocument();
+    expect(intersectBtn).toBeInTheDocument();
+    // Con 0 extrusiones, el title advierte que se necesitan al menos 2
+    expect(unionBtn.title).toMatch(/al menos 2 extrusiones/i);
   });
 
   it('booleanDialog_whenOpenedWithoutExtrudes_thenShowsEmptyMessage', () => {
     render(<ToolbarBoolean />);
-    fireEvent.click(screen.getByTestId('boolean-open-btn'));
-    expect(screen.getByTestId('boolean-empty-msg')).toBeInTheDocument();
+    // Clicking union starts the wizard (visible in uiStore)
+    fireEvent.click(screen.getByTestId('boolean-union-btn'));
+    const wizard = useUIStore.getState().booleanWizard;
+    expect(wizard).not.toBeNull();
+    expect(wizard?.operation).toBe('union');
+    expect(wizard?.step).toBe('select-target');
   });
 
   it('booleanDialog_whenOnlyPrimitivesExist_thenStillShowsEmptyMessage', () => {
@@ -115,9 +116,9 @@ describe('ToolbarBoolean — integración', () => {
     });
 
     render(<ToolbarBoolean />);
-    fireEvent.click(screen.getByTestId('boolean-open-btn'));
-    // Primitives are filtered out → still no extrudes available
-    expect(screen.getByTestId('boolean-empty-msg')).toBeInTheDocument();
+    // Primitives don't count → canRun still false → title still warns
+    const unionBtn = screen.getByTestId('boolean-union-btn') as HTMLButtonElement;
+    expect(unionBtn.title).toMatch(/al menos 2 extrusiones/i);
   });
 
   it('booleanDialog_whenTwoExtrudesAdded_thenApplyTriggersCreateBoolean', async () => {
@@ -129,25 +130,22 @@ describe('ToolbarBoolean — integración', () => {
 
     render(<ToolbarBoolean />);
 
-    // Open dialog
-    fireEvent.click(screen.getByTestId('boolean-open-btn'));
+    // With 2 extrudes, the button title should NOT warn about needing 2
+    const unionBtn = screen.getByTestId('boolean-union-btn') as HTMLButtonElement;
+    expect(unionBtn.title).not.toMatch(/al menos 2 extrusiones/i);
 
-    // Both extrudes should appear (one option per select → 2 each)
-    expect(screen.getAllByText('Extrusión A').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Extrusión B').length).toBeGreaterThan(0);
+    // Clicking starts the wizard
+    fireEvent.click(unionBtn);
+    const wizard = useUIStore.getState().booleanWizard;
+    expect(wizard).not.toBeNull();
+    expect(wizard?.operation).toBe('union');
 
-    // The "no hay extrusiones" warning should NOT be present
-    expect(screen.queryByTestId('boolean-empty-msg')).not.toBeInTheDocument();
-
-    // Click "Aplicar Booleana"
-    const apply = screen.getByRole('button', { name: /aplicar booleana/i });
-    expect(apply).not.toBeDisabled();
-
+    // Simulate wizard: set target + call createBoolean directly (canvas interaction not testable here)
     await act(async () => {
-      fireEvent.click(apply);
+      useUIStore.getState().setBooleanTarget('ext-1');
+      await useFeatureStore.getState().createBoolean('ext-1', 'ext-2', 'union');
     });
 
-    // Wait for the async createBoolean to settle and assert worker was called
     await vi.waitFor(() => {
       expect(booleanOpMock).toHaveBeenCalledTimes(1);
     });
@@ -161,24 +159,22 @@ describe('ToolbarBoolean — integración', () => {
   });
 
   it('booleanDialog_whenExtrudesAddedAfterFirstRender_thenStateSyncsOnOpen', async () => {
-    // Render with empty store
     const { addFeature } = useFeatureStore.getState();
     render(<ToolbarBoolean />);
 
-    // Add extrudes AFTER the dialog component is already mounted
+    // Add extrudes AFTER the component is already mounted
     act(() => {
       addFeature(mkExtrude('ext-1', 'A'), new BufferGeometry());
       addFeature(mkExtrude('ext-2', 'B'), new BufferGeometry());
     });
 
-    // Open the dialog now → useEffect must populate target/tool with ext-1 / ext-2
-    fireEvent.click(screen.getByTestId('boolean-open-btn'));
-
-    const apply = screen.getByRole('button', { name: /aplicar booleana/i }) as HTMLButtonElement;
-    expect(apply.disabled).toBe(false);
+    // Now clicking subtract starts wizard with correct operation
+    fireEvent.click(screen.getByTestId('boolean-subtract-btn'));
+    const wizard = useUIStore.getState().booleanWizard;
+    expect(wizard?.operation).toBe('subtract');
 
     await act(async () => {
-      fireEvent.click(apply);
+      await useFeatureStore.getState().createBoolean('ext-1', 'ext-2', 'subtract');
     });
 
     await vi.waitFor(() => {
@@ -186,3 +182,4 @@ describe('ToolbarBoolean — integración', () => {
     });
   });
 });
+

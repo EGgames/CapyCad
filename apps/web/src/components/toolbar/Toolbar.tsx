@@ -95,6 +95,7 @@ export default function Toolbar() {
     setMeasureUnit,
     pixelsPerMm,
     setPixelsPerMm,
+    selectedEntities,
   } = useSketchStore();
   const {
     createExtrude,
@@ -119,7 +120,17 @@ export default function Toolbar() {
     geometries,
     importModel,
     selectedFeatureId,
+    undo: featureUndo,
+    redo: featureRedo,
+    canUndo: featureCanUndo,
+    canRedo: featureCanRedo,
   } = useFeatureStore();
+
+  const activeUndo = editMode === '3d' ? featureUndo : undo;
+  const activeRedo = editMode === '3d' ? featureRedo : redo;
+  const activeCanUndo = () => (editMode === '3d' ? featureCanUndo : canUndo());
+  const activeCanRedo = () => (editMode === '3d' ? featureCanRedo : canRedo());
+
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [activeDialog, setActiveDialog] = useState<Tool3DAction | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -145,8 +156,19 @@ export default function Toolbar() {
 
   const handleExtrude = async (distance: number, direction: 'positive' | 'negative' | 'both') => {
     if (!requireSketch()) return;
+    if (selectedEntities.length === 0) {
+      alert('Selecciona al menos una entidad del sketch 2D antes de extruir');
+      return;
+    }
+    const entitiesToExtrude = activeSketch!.entities.filter((e) =>
+      selectedEntities.includes(e.id)
+    );
+    if (entitiesToExtrude.length === 0) {
+      alert('Las entidades seleccionadas no se encontraron en el sketch activo');
+      return;
+    }
     try {
-      await createExtrude(activeSketch!.id, activeSketch!.entities, distance, direction);
+      await createExtrude(activeSketch!.id, entitiesToExtrude, distance, direction);
       setEditMode('3d');
     } catch (error) {
       console.error('Error al extruir:', error);
@@ -625,22 +647,22 @@ export default function Toolbar() {
       {/* Undo/Redo */}
       <div className="flex items-center space-x-1">
         <button
-          onClick={undo}
-          disabled={!canUndo()}
+          onClick={activeUndo}
+          disabled={!activeCanUndo()}
           className={cn(
             'flex h-9 w-9 items-center justify-center rounded-md',
-            canUndo() ? 'hover:bg-muted' : 'cursor-not-allowed opacity-50'
+            activeCanUndo() ? 'hover:bg-muted' : 'cursor-not-allowed opacity-50'
           )}
           title="Deshacer (Ctrl+Z)"
         >
           <Undo2 className="h-4 w-4" />
         </button>
         <button
-          onClick={redo}
-          disabled={!canRedo()}
+          onClick={activeRedo}
+          disabled={!activeCanRedo()}
           className={cn(
             'flex h-9 w-9 items-center justify-center rounded-md',
-            canRedo() ? 'hover:bg-muted' : 'cursor-not-allowed opacity-50'
+            activeCanRedo() ? 'hover:bg-muted' : 'cursor-not-allowed opacity-50'
           )}
           title="Rehacer (Ctrl+Y)"
         >

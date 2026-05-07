@@ -4,6 +4,7 @@ import { Canvas as ThreeCanvas } from '@react-three/fiber';
 import { OrbitControls as ThreeOrbitControls } from '@react-three/drei';
 import { useSketchStore } from '@/stores/sketchStore';
 import { useFeatureStore } from '@/stores/featureStore';
+import { useUIStore } from '@/stores/uiStore';
 import { snapToGrid } from '@/lib/sketch/geometry';
 import {
   BaseTool,
@@ -61,7 +62,12 @@ export default function SketchEditor() {
     measureUnit,
     pixelsPerMm,
     addMeasurement,
+    selectEntity,
+    clearSelection,
   } = useSketchStore();
+
+  // Toggle global de la herramienta Selección. Si está OFF, no permitir clicks 2D.
+  const selectionToolActive = useUIStore((s) => s.selectionToolActive);
 
   // Inicializar canvas de Fabric.js
   useEffect(() => {
@@ -106,10 +112,10 @@ export default function SketchEditor() {
     };
   }, []);
 
-  // Habilitar/deshabilitar selección Fabric según herramienta
+  // Habilitar/deshabilitar selección Fabric según herramienta y toggle global
   useEffect(() => {
     if (!fabricCanvasRef.current) return;
-    const isSelect = activeTool === 'select';
+    const isSelect = activeTool === 'select' && selectionToolActive;
     fabricCanvasRef.current.selection = isSelect;
     fabricCanvasRef.current.getObjects().forEach((obj: any) => {
       if (!obj.data?.isGrid) {
@@ -120,20 +126,35 @@ export default function SketchEditor() {
     if (!isSelect) {
       fabricCanvasRef.current.discardActiveObject();
       setSelectedEntityId(null);
+      clearSelection();
     }
     fabricCanvasRef.current.renderAll();
-  }, [activeTool]);
+  }, [activeTool, selectionToolActive, clearSelection]);
 
-  // Registrar evento de selección en Fabric
+  // Registrar evento de selección en Fabric — sincroniza con sketchStore
   useEffect(() => {
     if (!fabricCanvasRef.current) return;
     const canvas = fabricCanvasRef.current;
 
     const onSelected = (e: any) => {
-      const entityId = e.selected?.[0]?.data?.entityId ?? null;
-      setSelectedEntityId(entityId);
+      const selected = e.selected ?? [];
+      const entityIds: string[] = selected
+        .map((obj: any) => obj?.data?.entityId)
+        .filter((id: string | undefined): id is string => !!id);
+      const firstId = entityIds[0] ?? null;
+      setSelectedEntityId(firstId);
+      // Sincronizar con sketchStore: reemplaza la selección con la actual de Fabric.
+      clearSelection();
+      entityIds.forEach((id, idx) => selectEntity(id, idx > 0));
+      // Limpiar selección 3D cuando hay selección 2D activa.
+      if (entityIds.length > 0) {
+        useFeatureStore.getState().selectFeature(null);
+      }
     };
-    const onDeselected = () => setSelectedEntityId(null);
+    const onDeselected = () => {
+      setSelectedEntityId(null);
+      clearSelection();
+    };
 
     canvas.on('selection:created', onSelected);
     canvas.on('selection:updated', onSelected);
@@ -143,7 +164,7 @@ export default function SketchEditor() {
       canvas.off('selection:updated', onSelected);
       canvas.off('selection:cleared', onDeselected);
     };
-  }, []);
+  }, [selectEntity, clearSelection]);
 
   // Actualizar herramienta activa
   useEffect(() => {
