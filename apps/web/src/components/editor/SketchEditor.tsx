@@ -15,6 +15,7 @@ import {
   ArcTool,
   MeasureTool,
   SplineTool,
+  EllipseTool,
 } from '@/lib/sketch/tools';
 import {
   Vector2,
@@ -25,6 +26,7 @@ import {
   Circle as CircleEntity,
   Line as LineEntity,
   Arc as ArcEntity,
+  Ellipse as EllipseEntity,
 } from '@stl-model/shared-types';
 import { ZoomIn, ZoomOut, Maximize2, Box, X } from 'lucide-react';
 import { useMemo } from 'react';
@@ -197,6 +199,9 @@ export default function SketchEditor() {
       case 'spline':
         currentToolRef.current = new SplineTool(fabricCanvasRef.current);
         break;
+      case 'ellipse':
+        currentToolRef.current = new EllipseTool(fabricCanvasRef.current);
+        break;
       default:
         currentToolRef.current = null;
     }
@@ -340,6 +345,9 @@ export default function SketchEditor() {
           break;
         case 'b':
           setActiveTool('spline');
+          break;
+        case 'e':
+          setActiveTool('ellipse');
           break;
       }
     };
@@ -536,6 +544,9 @@ function EntityPropertiesPanel({ entity, onUpdate, fabricCanvas }: EntityPropsPa
         {entity.type === SketchEntityType.POLYGON && (
           <PolygonProps entity={entity as PolygonEntity} onUpdate={onUpdate} />
         )}
+        {entity.type === SketchEntityType.ELLIPSE && (
+          <EllipseProps entity={entity as EllipseEntity} onUpdate={onUpdate} />
+        )}
       </div>
     </div>
   );
@@ -549,6 +560,7 @@ function labelForType(type: SketchEntityType) {
     [SketchEntityType.RECTANGLE]: 'Rectángulo',
     [SketchEntityType.POLYGON]: 'Polígono',
     [SketchEntityType.SPLINE]: 'Spline',
+    [SketchEntityType.ELLIPSE]: 'Elipse',
   };
   return labels[type] ?? type;
 }
@@ -766,6 +778,37 @@ function PolygonProps({ entity, onUpdate }: { entity: PolygonEntity; onUpdate: (
 // ---------------------------------------------------------------------------
 // Sincronización de objetos Fabric con las entidades del store
 // cuando el usuario edita propiedades numéricas
+
+function EllipseProps({ entity, onUpdate }: { entity: EllipseEntity; onUpdate: (u: any) => void }) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2">
+        <NumField
+          label="CX"
+          value={entity.center.x}
+          onChange={(v) => onUpdate({ center: { ...entity.center, x: v } })}
+        />
+        <NumField
+          label="CY"
+          value={entity.center.y}
+          onChange={(v) => onUpdate({ center: { ...entity.center, y: v } })}
+        />
+      </div>
+      <NumField
+        label="Radio X (px)"
+        value={entity.radiusX}
+        min={1}
+        onChange={(v) => onUpdate({ radiusX: Math.max(v, 1) })}
+      />
+      <NumField
+        label="Radio Y (px)"
+        value={entity.radiusY}
+        min={1}
+        onChange={(v) => onUpdate({ radiusY: Math.max(v, 1) })}
+      />
+    </>
+  );
+}
 // ---------------------------------------------------------------------------
 
 function syncFabricObjects(canvas: FabricCanvas, entities: SketchEntity[]) {
