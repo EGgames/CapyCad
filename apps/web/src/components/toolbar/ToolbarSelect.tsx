@@ -4,7 +4,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useFeatureStore } from '@/stores/featureStore';
 import { useSketchStore } from '@/stores/sketchStore';
 import { cn } from '@/lib/utils';
-import { usePanelOrientation } from '../ui/panelOrientation';
+import { usePanelOrientation, usePanelCompact } from '../ui/panelOrientation';
 
 /**
  * Barra dedicada a la herramienta de SELECCIÓN.
@@ -31,6 +31,7 @@ export default function ToolbarSelect() {
 
   const orientation = usePanelOrientation();
   const isVertical = orientation === 'vertical';
+  const isCompact = usePanelCompact();
 
   const selectedFeature = selectedFeatureId
     ? features.find((f) => f.id === selectedFeatureId)
@@ -80,33 +81,35 @@ export default function ToolbarSelect() {
     <div
       data-testid="toolbar-select"
       className={cn(
-        'gap-1 px-2 sm:px-4',
-        isVertical
-          ? 'flex flex-col items-stretch py-2'
-          : 'flex items-center overflow-x-auto'
+        'gap-1 px-2',
+        isVertical ? 'flex flex-col items-stretch py-2' : 'flex items-center overflow-x-auto'
       )}
     >
       <div
         className={cn(
           isVertical
-            ? 'flex flex-col items-stretch space-y-1'
+            ? isCompact
+              ? 'flex flex-col items-center space-y-1'
+              : 'flex flex-col items-stretch space-y-1'
             : 'flex items-center space-x-1'
         )}
       >
-        <span
-          className={cn(
-            'text-xs font-medium text-muted-foreground',
-            isVertical ? 'mb-1' : 'mr-2'
-          )}
-        >
-          Selección:
-        </span>
+        {!isCompact && (
+          <span
+            className={cn(
+              'text-xs font-medium text-muted-foreground',
+              isVertical ? 'mb-1' : 'mr-2'
+            )}
+          >
+            Selección:
+          </span>
+        )}
 
         <button
           data-testid="select-tool-btn"
           aria-pressed={selectionToolActive}
           className={cn(
-            isVertical
+            isVertical && !isCompact
               ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
               : 'flex h-9 w-9 items-center justify-center rounded-md',
             selectionToolActive
@@ -121,33 +124,35 @@ export default function ToolbarSelect() {
           onClick={handleToggle}
         >
           <MousePointer2 className="h-4 w-4" />
-          {isVertical && <span className="text-sm">Seleccionar</span>}
+          {isVertical && !isCompact && <span className="text-sm">Seleccionar</span>}
         </button>
 
-        {/* Estado actual de la selección */}
-        <div
-          data-testid="selection-status"
-          className={cn(
-            'flex items-center gap-1.5 text-xs',
-            isVertical ? 'mt-1 px-2' : 'ml-2',
-            hasAnySelection ? 'text-foreground' : 'text-muted-foreground'
-          )}
-        >
-          <span className="truncate max-w-[160px]" title={selectionLabel}>
-            {selectionLabel}
-          </span>
-          {hasAnySelection && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="rounded p-0.5 hover:bg-muted"
-              title="Limpiar selección"
-              aria-label="Limpiar selección"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
-        </div>
+        {/* Estado actual de la selección — oculto en modo compacto */}
+        {!isCompact && (
+          <div
+            data-testid="selection-status"
+            className={cn(
+              'flex items-center gap-1.5 text-xs',
+              isVertical ? 'mt-1 px-2' : 'ml-2',
+              hasAnySelection ? 'text-foreground' : 'text-muted-foreground'
+            )}
+          >
+            <span className="truncate max-w-[160px]" title={selectionLabel}>
+              {selectionLabel}
+            </span>
+            {hasAnySelection && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="rounded p-0.5 hover:bg-muted"
+                title="Limpiar selección"
+                aria-label="Limpiar selección"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

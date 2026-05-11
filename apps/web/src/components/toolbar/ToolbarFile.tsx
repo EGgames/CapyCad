@@ -1,13 +1,4 @@
-import {
-  Box,
-  Download,
-  Save,
-  FolderOpen,
-  Upload,
-  Undo2,
-  Redo2,
-  ChevronDown,
-} from 'lucide-react';
+import { Box, Download, Save, FolderOpen, Upload, Undo2, Redo2, ChevronDown } from 'lucide-react';
 import { useSketchStore } from '@/stores/sketchStore';
 import { useFeatureStore } from '@/stores/featureStore';
 import { cn } from '@/lib/utils';
@@ -15,18 +6,11 @@ import { useState, useRef } from 'react';
 import { exportModel } from '@/lib/export/modelExporter';
 import { saveProject, loadProject } from '@/lib/project/projectSerializer';
 import { importModelFile } from '@/lib/import/modelImporter';
-import { usePanelOrientation } from '../ui/panelOrientation';
+import { usePanelOrientation, usePanelCompact } from '../ui/panelOrientation';
+import { toast } from '@/lib/toast';
 
 export default function ToolbarFile() {
-  const {
-    editMode,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    activeSketch,
-    setEditMode,
-  } = useSketchStore();
+  const { editMode, undo, redo, canUndo, canRedo, activeSketch, setEditMode } = useSketchStore();
   const {
     features,
     geometries,
@@ -42,6 +26,7 @@ export default function ToolbarFile() {
   const activeCanUndo = () => (editMode === '3d' ? featureCanUndo : canUndo());
   const activeCanRedo = () => (editMode === '3d' ? featureCanRedo : canRedo());
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportResolution, setExportResolution] = useState<'low' | 'medium' | 'high'>('medium');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,7 +38,7 @@ export default function ToolbarFile() {
   const handleExportFormat = async (format: 'stl-binary' | 'stl-ascii' | 'obj' | 'm3f') => {
     setShowExportMenu(false);
     if (geometries.size === 0) {
-      alert('No hay geometrías 3D para exportar. Crea una extrusión primero.');
+      toast.warning('No hay geometrías 3D para exportar. Crea una extrusión primero.');
       return;
     }
     try {
@@ -61,10 +46,11 @@ export default function ToolbarFile() {
       await exportModel(featureGeometries, {
         format,
         filename: activeSketch?.name ?? 'modelo',
+        resolution: exportResolution,
       });
     } catch (error) {
       console.error('Error al exportar:', error);
-      alert(`Error al exportar: ${(error as Error).message}`);
+      toast.error(`Error al exportar: ${(error as Error).message}`);
     }
   };
 
@@ -85,7 +71,7 @@ export default function ToolbarFile() {
       setEditMode('3d');
     } catch (error) {
       console.error('Error al importar modelo:', error);
-      alert(`Error al importar: ${(error as Error).message}`);
+      toast.error(`Error al importar: ${(error as Error).message}`);
     }
     event.target.value = '';
   };
@@ -104,10 +90,10 @@ export default function ToolbarFile() {
           useSketchStore.setState({ activeSketch: loaded.sketch });
         }
         useFeatureStore.setState({ features: loaded.features });
-        alert(`Proyecto "${loaded.metadata.name}" cargado correctamente.`);
+        toast.success(`Proyecto "${loaded.metadata.name}" cargado correctamente.`);
       } catch (error) {
         console.error('Error al cargar proyecto:', error);
-        alert(`Error al cargar el archivo: ${(error as Error).message}`);
+        toast.error(`Error al cargar el archivo: ${(error as Error).message}`);
       }
     };
     reader.readAsText(file);
@@ -122,35 +108,47 @@ export default function ToolbarFile() {
 
   const orientation = usePanelOrientation();
   const isVertical = orientation === 'vertical';
+  const isCompact = usePanelCompact();
   const sep = isVertical ? 'my-1 h-px w-full bg-border' : 'mx-2 h-8 w-px bg-border';
 
   return (
     <div
       data-testid="toolbar-file"
       className={cn(
-        'gap-1 px-2 sm:px-4',
-        isVertical
-          ? 'flex flex-col items-stretch py-2'
-          : 'flex items-center overflow-x-auto'
+        'gap-1 px-2',
+        isVertical ? 'flex flex-col items-stretch py-2' : 'flex items-center overflow-x-auto'
       )}
     >
       {/* Logo */}
-      <div className={cn('flex items-center space-x-2', isVertical ? 'mb-2' : 'mr-4')}>
-        <div className="flex h-8 w-8 items-center justify-center rounded bg-primary">
+      <div
+        className={cn(
+          'flex items-center',
+          isVertical ? 'mb-2' : 'mr-4',
+          !isCompact && 'space-x-2',
+          isVertical && isCompact && 'justify-center'
+        )}
+      >
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-primary">
           <Box className="h-5 w-5 text-primary-foreground" />
         </div>
-        <span className="text-lg font-semibold">STL-Model</span>
+        {!isCompact && <span className="text-lg font-semibold">STL-Model</span>}
       </div>
 
       {/* Separador */}
       <div className={sep} />
 
       {/* Toggle Vista 2D / 3D */}
-      <div className={cn('flex items-center rounded-md border border-border p-1', isVertical ? 'self-stretch justify-center' : 'ml-2')}>
+      <div
+        className={cn(
+          'flex items-center rounded-md border border-border p-1',
+          isVertical ? 'self-stretch justify-center' : 'ml-2'
+        )}
+      >
         <button
           onClick={() => setEditMode('2d')}
           className={cn(
-            'flex h-7 items-center rounded px-3 text-xs font-semibold transition-colors',
+            'flex h-7 items-center rounded transition-colors font-semibold',
+            isCompact ? 'px-1.5 text-[10px]' : 'px-3 text-xs',
             editMode === '2d'
               ? 'bg-primary text-primary-foreground'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -162,7 +160,8 @@ export default function ToolbarFile() {
         <button
           onClick={() => setEditMode('3d')}
           className={cn(
-            'flex h-7 items-center rounded px-3 text-xs font-semibold transition-colors',
+            'flex h-7 items-center rounded transition-colors font-semibold',
+            isCompact ? 'px-1.5 text-[10px]' : 'px-3 text-xs',
             editMode === '3d'
               ? 'bg-primary text-primary-foreground'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -177,7 +176,15 @@ export default function ToolbarFile() {
       <div className={sep} />
 
       {/* Acciones de archivo */}
-      <div className={cn(isVertical ? 'flex flex-col items-stretch space-y-1' : 'flex items-center space-x-1')}>
+      <div
+        className={cn(
+          isVertical
+            ? isCompact
+              ? 'flex flex-col items-center space-y-1'
+              : 'flex flex-col items-stretch space-y-1'
+            : 'flex items-center space-x-1'
+        )}
+      >
         {/* Input oculto para abrir .stlm */}
         <input
           ref={fileInputRef}
@@ -197,7 +204,12 @@ export default function ToolbarFile() {
         {fileActions.map((tool) => (
           <button
             key={tool.action}
-            className="flex h-9 items-center space-x-2 rounded-md px-3 hover:bg-muted"
+            className={cn(
+              isVertical && !isCompact
+                ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
+                : 'flex h-9 w-9 items-center justify-center rounded-md',
+              'hover:bg-muted'
+            )}
             title={tool.label}
             onClick={
               tool.action === 'save'
@@ -208,23 +220,47 @@ export default function ToolbarFile() {
             }
           >
             <tool.icon className="h-4 w-4" />
-            <span className="text-sm">{tool.label}</span>
+            {isVertical && !isCompact && <span className="text-sm">{tool.label}</span>}
           </button>
         ))}
 
         {/* Exportar — dropdown de formatos */}
         <div className="relative">
           <button
-            className="flex h-9 items-center space-x-2 rounded-md px-3 hover:bg-muted"
+            className={cn(
+              isVertical && !isCompact
+                ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
+                : 'flex h-9 w-9 items-center justify-center rounded-md',
+              'hover:bg-muted'
+            )}
             title="Exportar modelo"
             onClick={() => setShowExportMenu((v) => !v)}
           >
             <Download className="h-4 w-4" />
-            <span className="text-sm">Exportar</span>
-            <ChevronDown className="h-3 w-3" />
+            {isVertical && !isCompact && <span className="text-sm">Exportar</span>}
+            {isVertical && !isCompact && <ChevronDown className="h-3 w-3" />}
           </button>
           {showExportMenu && (
             <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-border bg-card shadow-lg">
+              <div className="border-b border-border px-3 py-2">
+                <p className="mb-1 text-xs font-medium text-muted-foreground">Resolución malla</p>
+                <div className="flex gap-1">
+                  {(['low', 'medium', 'high'] as const).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setExportResolution(r)}
+                      className={cn(
+                        'flex-1 rounded px-1 py-0.5 text-xs capitalize',
+                        exportResolution === r
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-muted'
+                      )}
+                    >
+                      {r === 'low' ? 'Baja' : r === 'medium' ? 'Media' : 'Alta'}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <button
                 className="flex w-full items-center px-3 py-2 text-sm hover:bg-muted"
                 onClick={() => handleExportFormat('stl-binary')}
@@ -258,30 +294,42 @@ export default function ToolbarFile() {
       <div className={sep} />
 
       {/* Undo/Redo */}
-      <div className={cn(isVertical ? 'flex flex-col items-stretch space-y-1' : 'flex items-center space-x-1')}>
+      <div
+        className={cn(
+          isVertical
+            ? isCompact
+              ? 'flex flex-col items-center space-y-1'
+              : 'flex flex-col items-stretch space-y-1'
+            : 'flex items-center space-x-1'
+        )}
+      >
         <button
           onClick={activeUndo}
           disabled={!activeCanUndo()}
           className={cn(
-            isVertical ? 'flex h-9 w-full items-center gap-2 rounded-md px-3' : 'flex h-9 w-9 items-center justify-center rounded-md',
+            isVertical && !isCompact
+              ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
+              : 'flex h-9 w-9 items-center justify-center rounded-md',
             activeCanUndo() ? 'hover:bg-muted' : 'cursor-not-allowed opacity-50'
           )}
           title="Deshacer (Ctrl+Z)"
         >
           <Undo2 className="h-4 w-4" />
-          {isVertical && <span className="text-sm">Deshacer</span>}
+          {isVertical && !isCompact && <span className="text-sm">Deshacer</span>}
         </button>
         <button
           onClick={activeRedo}
           disabled={!activeCanRedo()}
           className={cn(
-            isVertical ? 'flex h-9 w-full items-center gap-2 rounded-md px-3' : 'flex h-9 w-9 items-center justify-center rounded-md',
+            isVertical && !isCompact
+              ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
+              : 'flex h-9 w-9 items-center justify-center rounded-md',
             activeCanRedo() ? 'hover:bg-muted' : 'cursor-not-allowed opacity-50'
           )}
           title="Rehacer (Ctrl+Y)"
         >
           <Redo2 className="h-4 w-4" />
-          {isVertical && <span className="text-sm">Rehacer</span>}
+          {isVertical && !isCompact && <span className="text-sm">Rehacer</span>}
         </button>
       </div>
     </div>

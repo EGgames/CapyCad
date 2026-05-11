@@ -4,20 +4,15 @@ import { useSketchStore } from '@/stores/sketchStore';
 import { useFeatureStore } from '@/stores/featureStore';
 import { useUIStore } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
-import { usePanelOrientation } from '../ui/panelOrientation';
-import {
-  RevolveDialog,
-  SweepDialog,
-  LoftDialog,
-} from './Tool3DDialogs';
+import { usePanelOrientation, usePanelCompact } from '../ui/panelOrientation';
+import { RevolveDialog, SweepDialog, LoftDialog } from './Tool3DDialogs';
 import { FeatureType, type SketchEntity, type ExtrudeFeature } from '@stl-model/shared-types';
 
 type ExtrudeAction = 'extrude' | 'revolve' | 'sweep' | 'loft';
 
 export default function ToolbarExtrude() {
   const { activeSketch, setEditMode, selectedEntities } = useSketchStore();
-  const { createExtrude, createRevolve, createSweep, createLoft, isProcessing } =
-    useFeatureStore();
+  const { createExtrude, createRevolve, createSweep, createLoft, isProcessing } = useFeatureStore();
   const selectedFeatureId = useFeatureStore((s) => s.selectedFeatureId);
   const features = useFeatureStore((s) => s.features);
   const setExtrudePreviewActive = useUIStore((s) => s.setExtrudePreviewActive);
@@ -43,10 +38,7 @@ export default function ToolbarExtrude() {
     return true;
   };
 
-  const handleExtrude = async (
-    distance: number,
-    direction: 'positive' | 'negative' | 'both'
-  ) => {
+  const handleExtrude = async (distance: number, direction: 'positive' | 'negative' | 'both') => {
     // Caso 1: hay un sketch 2D activo con entidades seleccionadas → las extruimos.
     if (activeSketch && selectedEntities.length > 0) {
       const entitiesToExtrude = activeSketch.entities.filter((e) =>
@@ -96,9 +88,7 @@ export default function ToolbarExtrude() {
     }
   };
 
-  const handleSweep = async (
-    pathPoints: Array<{ x: number; y: number; z: number }>
-  ) => {
+  const handleSweep = async (pathPoints: Array<{ x: number; y: number; z: number }>) => {
     if (!requireSketch()) return;
     try {
       await createSweep(activeSketch!.entities, pathPoints);
@@ -151,6 +141,7 @@ export default function ToolbarExtrude() {
 
   const orientation = usePanelOrientation();
   const isVertical = orientation === 'vertical';
+  const isCompact = usePanelCompact();
 
   // Las herramientas generativas que NO sean Extruir requieren un sketch 2D con selección.
   const hasSketch = !!activeSketch && activeSketch.entities.length > 0;
@@ -183,27 +174,29 @@ export default function ToolbarExtrude() {
     <div
       data-testid="toolbar-extrude"
       className={cn(
-        'gap-1 px-2 sm:px-4',
-        isVertical
-          ? 'flex flex-col items-stretch py-2'
-          : 'flex items-center overflow-x-auto'
+        'gap-1 px-2',
+        isVertical ? 'flex flex-col items-stretch py-2' : 'flex items-center overflow-x-auto'
       )}
     >
       <div
         className={cn(
           isVertical
-            ? 'flex flex-col items-stretch space-y-1'
+            ? isCompact
+              ? 'flex flex-col items-center space-y-1'
+              : 'flex flex-col items-stretch space-y-1'
             : 'flex items-center space-x-1'
         )}
       >
-        <span
-          className={cn(
-            'text-xs font-medium text-muted-foreground',
-            isVertical ? 'mb-1' : 'mr-2'
-          )}
-        >
-          Extrusión:
-        </span>
+        {!isCompact && (
+          <span
+            className={cn(
+              'text-xs font-medium text-muted-foreground',
+              isVertical ? 'mb-1' : 'mr-2'
+            )}
+          >
+            Extrusión:
+          </span>
+        )}
         {tools.map((tool) => {
           const disabled = isActionDisabled(tool.action);
           const dimmed = !isProcessing && disabled;
@@ -211,7 +204,7 @@ export default function ToolbarExtrude() {
             <button
               key={tool.action}
               className={cn(
-                isVertical
+                isVertical && !isCompact
                   ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
                   : 'flex h-9 w-9 items-center justify-center rounded-md',
                 isProcessing
@@ -235,7 +228,7 @@ export default function ToolbarExtrude() {
               disabled={disabled}
             >
               <tool.icon className="h-4 w-4" />
-              {isVertical && <span className="text-sm">{tool.label}</span>}
+              {isVertical && !isCompact && <span className="text-sm">{tool.label}</span>}
             </button>
           );
         })}
