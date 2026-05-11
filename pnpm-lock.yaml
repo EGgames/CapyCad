@@ -65,7 +65,7 @@ importers:
         version: 9.27.0(@types/node@20.19.39)(expect-webdriverio@5.6.5)
       '@wdio/local-runner':
         specifier: ^9.26.1
-        version: 9.27.0(@wdio/globals@9.27.0)(webdriverio@9.27.0)
+        version: 9.27.0(@wdio/globals@9.27.1)(webdriverio@9.27.0)
       '@wdio/spec-reporter':
         specifier: ^9.26.1
         version: 9.27.0
@@ -124,8 +124,8 @@ importers:
         specifier: ^0.372.0
         version: 0.372.0(react@18.3.1)
       nanoid:
-        specifier: ^5.0.7
-        version: 5.1.7
+        specifier: ^5.1.11
+        version: 5.1.11
       opencascade.js:
         specifier: 2.0.0-beta.b5ff984
         version: 2.0.0-beta.b5ff984(ws@8.20.0)
@@ -3593,11 +3593,22 @@ packages:
       expect-webdriverio: ^5.6.5
       webdriverio: ^9.0.0
     dependencies:
-      expect-webdriverio: 5.6.5(@wdio/globals@9.27.0)(@wdio/logger@9.18.0)(webdriverio@9.27.0)
+      expect-webdriverio: 5.6.5(@wdio/globals@9.27.1)(@wdio/logger@9.18.0)(webdriverio@9.27.0)
       webdriverio: 9.27.0
     dev: true
 
-  /@wdio/local-runner@9.27.0(@wdio/globals@9.27.0)(webdriverio@9.27.0):
+  /@wdio/globals@9.27.1(expect-webdriverio@5.6.5)(webdriverio@9.27.0):
+    resolution: {integrity: sha512-jm6gTQ6Qo3EOBY6PA09U/5Pf17WLEJM1/lTfhc6jzLFE770EuhuhbuphqrInH0hVR9WMyWtSZQ+LRCcLfcmOPQ==}
+    engines: {node: '>=18.20.0'}
+    peerDependencies:
+      expect-webdriverio: ^5.6.5
+      webdriverio: ^9.0.0
+    dependencies:
+      expect-webdriverio: 5.6.5(@wdio/globals@9.27.1)(@wdio/logger@9.18.0)(webdriverio@9.27.0)
+      webdriverio: 9.27.0
+    dev: true
+
+  /@wdio/local-runner@9.27.0(@wdio/globals@9.27.1)(webdriverio@9.27.0):
     resolution: {integrity: sha512-0AqAbz1UhZ9e72ebqH4/B9/qOy0LVm3iOOYp16Rz2zkE5DOudLPPn3DpakafqW22Z7Q+Wb/23KRttPMrq0rOxw==}
     engines: {node: '>=18.20.0'}
     dependencies:
@@ -3608,7 +3619,7 @@ packages:
       '@wdio/types': 9.27.0
       '@wdio/xvfb': 9.27.0
       exit-hook: 4.0.0
-      expect-webdriverio: 5.6.5(@wdio/globals@9.27.0)(@wdio/logger@9.18.0)(webdriverio@9.27.0)
+      expect-webdriverio: 5.6.5(@wdio/globals@9.27.1)(@wdio/logger@9.18.0)(webdriverio@9.27.0)
       split2: 4.2.0
       stream-buffers: 3.0.3
     transitivePeerDependencies:
@@ -3681,7 +3692,7 @@ packages:
       '@wdio/types': 9.27.0
       '@wdio/utils': 9.27.0
       deepmerge-ts: 7.1.5
-      expect-webdriverio: 5.6.5(@wdio/globals@9.27.0)(@wdio/logger@9.18.0)(webdriverio@9.27.0)
+      expect-webdriverio: 5.6.5(@wdio/globals@9.27.1)(@wdio/logger@9.18.0)(webdriverio@9.27.0)
       webdriver: 9.27.0
       webdriverio: 9.27.0
     transitivePeerDependencies:
@@ -4118,8 +4129,8 @@ packages:
         optional: true
     dev: true
 
-  /bare-fs@4.6.0:
-    resolution: {integrity: sha512-2YkS7NuiJceSEbyEOdSNLE9tsGd+f4+f7C+Nik/MCk27SYdwIMPT/yRKvg++FZhQXgk0KWJKJyXX9RhVV0RGqA==}
+  /bare-fs@4.7.1:
+    resolution: {integrity: sha512-WDRsyVN52eAx/lBamKD6uyw8H4228h/x0sGGGegOamM2cd7Pag88GfMQalobXI+HaEUxpCkbKQUDOQqt9wawRw==}
     engines: {bare: '>=1.16.0'}
     peerDependencies:
       bare-buffer: '*'
@@ -4561,6 +4572,7 @@ packages:
   /clone@1.0.4:
     resolution: {integrity: sha512-JQHZ2QMW6l3aH/j6xCqQThY/9OH4D/9ls34cgkUBiEeocRTU04tHfKPBsUK1PqZCUQM7GiA0IIXJSuXHI64Kbg==}
     engines: {node: '>=0.8'}
+    requiresBuild: true
     dev: true
 
   /clsx@2.1.1:
@@ -5689,7 +5701,7 @@ packages:
     dev: false
     optional: true
 
-  /expect-webdriverio@5.6.5(@wdio/globals@9.27.0)(@wdio/logger@9.18.0)(webdriverio@9.27.0):
+  /expect-webdriverio@5.6.5(@wdio/globals@9.27.1)(@wdio/logger@9.18.0)(webdriverio@9.27.0):
     resolution: {integrity: sha512-5ot+Apo0bEvMD/nqzWymQpgyWnOdu0kVpmahLx5T7NzUc6RyifucZ24Gsfr6F6C8yRGBhmoFh7ZeY+W9kteEBQ==}
     engines: {node: '>=20'}
     peerDependencies:
@@ -5698,7 +5710,7 @@ packages:
       webdriverio: ^9.0.0
     dependencies:
       '@vitest/snapshot': 4.1.2
-      '@wdio/globals': 9.27.0(expect-webdriverio@5.6.5)(webdriverio@9.27.0)
+      '@wdio/globals': 9.27.1(expect-webdriverio@5.6.5)(webdriverio@9.27.0)
       '@wdio/logger': 9.18.0
       deep-eql: 5.0.2
       expect: 30.3.0
@@ -7715,14 +7727,14 @@ packages:
       thenify-all: 1.6.0
     dev: true
 
-  /nanoid@3.3.11:
-    resolution: {integrity: sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==}
+  /nanoid@3.3.12:
+    resolution: {integrity: sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
     dev: true
 
-  /nanoid@5.1.7:
-    resolution: {integrity: sha512-ua3NDgISf6jdwezAheMOk4mbE1LXjm1DfMUDMuJf4AqxLFK3ccGpgWizwa5YV7Yz9EpXwEaWoRXSb/BnV0t5dQ==}
+  /nanoid@5.1.11:
+    resolution: {integrity: sha512-v+KEsUv2ps74PaSKv0gHTxTCgMXOIfBEbaqa6w6ISIGC7ZsvHN4N9oJ8d4cmf0n5oTzQz2SLmThbQWhjd/8eKg==}
     engines: {node: ^18 || >=20}
     hasBin: true
     dev: false
@@ -8372,7 +8384,7 @@ packages:
     resolution: {integrity: sha512-OW/rX8O/jXnm82Ey1k44pObPtdblfiuWnrd8X7GJ7emImCOstunGbXUpp7HdBrFQX6rJzn3sPT397Wp5aCwCHg==}
     engines: {node: ^10 || ^12 || >=14}
     dependencies:
-      nanoid: 3.3.11
+      nanoid: 3.3.12
       picocolors: 1.1.1
       source-map-js: 1.2.1
     dev: true
@@ -9669,7 +9681,7 @@ packages:
       pump: 3.0.4
       tar-stream: 3.1.8
     optionalDependencies:
-      bare-fs: 4.6.0
+      bare-fs: 4.7.1
       bare-path: 3.0.0
     transitivePeerDependencies:
       - bare-abort-controller
@@ -9694,7 +9706,7 @@ packages:
     resolution: {integrity: sha512-U6QpVRyCGHva435KoNWy9PRoi2IFYCgtEhq9nmrPPpbRacPs9IH4aJ3gbrFC8dPcXvdSZ4XXfXT5Fshbp2MtlQ==}
     dependencies:
       b4a: 1.8.0
-      bare-fs: 4.6.0
+      bare-fs: 4.7.1
       fast-fifo: 1.3.2
       streamx: 2.25.0
     transitivePeerDependencies:
