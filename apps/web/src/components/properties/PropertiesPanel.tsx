@@ -40,7 +40,7 @@ export default function PropertiesPanel() {
   const show2DPanel = editMode === '2d' && selectedEntities.length > 0 && activeSketch;
 
   return (
-    <div data-testid="properties-panel" className="flex w-56 flex-col lg:w-64">
+    <div data-testid="properties-panel" className="flex w-full min-w-0 flex-col">
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
         {show2DPanel ? (
