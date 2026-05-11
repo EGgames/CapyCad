@@ -116,4 +116,24 @@ export const AppState = {
     Question.about('el mensaje de booleana sin extrusiones', (actor) =>
       actor.answer(booleanEmptyMsg().isPresent())
     ),
+
+  /** ¿El botón "Extruir" está visible en la interfaz? */
+  extrudeButtonIsVisible: () =>
+    Question.about('la visibilidad del botón "Extruir"', (actor) =>
+      actor.answer(PageElement.located(By.css('[title*="Extruir"], [data-testid="extrude-btn"]')).isPresent())
+    ),
+
+  /** ¿El canvas de boceto 2D NO está visible? */
+  sketchCanvasIsNotVisible: () =>
+    Question.about('la ausencia del canvas de boceto', async (actor) => {
+      const visible = await actor.answer(sketchCanvas().isPresent());
+      return !visible;
+    }),
+
+  /** ¿No hay banner de error del motor CAD visible? */
+  noCADErrorBannerVisible: () =>
+    Question.about('que el motor CAD está disponible', async (actor) => {
+      const present = await actor.answer(cadErrorBanner().isPresent());
+      return !present;
+    }),
 };

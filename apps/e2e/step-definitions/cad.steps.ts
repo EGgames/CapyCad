@@ -161,3 +161,25 @@ Then('el diálogo de booleana debería mostrar el mensaje de "no hay extrusiones
     Ensure.that(AppState.booleanEmptyMessageIsVisible(), isTrue())
   );
 });
+
+// ── Actions para vista unificada 2D/3D ──────────────────────────────────────
+
+Then('debería ver el botón "Extruir"', async () => {
+  await actorCalled('Diseñador').attemptsTo(
+    Wait.upTo(Duration.ofSeconds(10)).until(AppState.extrudeButtonIsVisible(), isTrue()),
+    Ensure.that(AppState.extrudeButtonIsVisible(), isTrue())
+  );
+});
+
+Then('el canvas de boceto no debería estar visible', async () => {
+  await actorCalled('Diseñador').attemptsTo(
+    Wait.upTo(Duration.ofSeconds(5)).until(AppState.sketchCanvasIsNotVisible(), isTrue()),
+    Ensure.that(AppState.sketchCanvasIsNotVisible(), isTrue())
+  );
+});
+
+Then('no debería mostrar banner de error del motor CAD', async () => {
+  await actorCalled('Diseñador').attemptsTo(
+    Ensure.that(AppState.noCADErrorBannerVisible(), isTrue())
+  );
+});
