@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Crear Issues por HU desde FASE_3 y TEST_PLAN
-        uses: actions/github-script@v6
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
