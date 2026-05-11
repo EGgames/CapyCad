@@ -19,6 +19,8 @@ export type ExportFormat = 'stl-binary' | 'stl-ascii' | 'obj' | 'm3f';
 export interface ExportOptions {
   filename?: string;
   format: ExportFormat;
+  /** Resolución de la malla para STL (low/medium/high) */
+  resolution?: 'low' | 'medium' | 'high';
 }
 
 // ─── Exportador OBJ ──────────────────────────────────────────────────────────
@@ -100,7 +102,7 @@ export async function exportModel(
         geometriesMap.set(fg.featureId, { geometry: fg.geometry, visible: true });
       });
     const stlFormat = format === 'stl-ascii' ? 'ascii' : 'binary';
-    exportToSTL(geometriesMap, { filename, format: stlFormat });
+    exportToSTL(geometriesMap, { filename, format: stlFormat, resolution: options.resolution });
   }
 }
 

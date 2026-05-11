@@ -9,6 +9,7 @@
 
 import { Scene, Mesh, MeshBasicMaterial, type BufferGeometry } from 'three';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
+import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
 
 /**
  * Opciones de exportación STL
@@ -18,11 +19,14 @@ export interface ExportSTLOptions {
   format: 'binary' | 'ascii';
   /** Nombre base del archivo (sin extensión) */
   filename?: string;
+  /** Resolución de la malla (afecta la tolerancia de triangulación) */
+  resolution?: 'low' | 'medium' | 'high';
 }
 
 const DEFAULT_OPTIONS: Required<ExportSTLOptions> = {
   format: 'binary',
   filename: 'model',
+  resolution: 'medium',
 };
 
 /**
@@ -38,7 +42,7 @@ export function exportToSTL(
 ): void {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
-  const stlData = buildSTLData(geometries, opts.format);
+  const stlData = buildSTLData(geometries, opts.format, opts.resolution);
   triggerDownload(stlData, opts.filename, opts.format);
 }
 
@@ -48,7 +52,8 @@ export function exportToSTL(
  */
 export function buildSTLData(
   geometries: Map<string, { geometry: BufferGeometry; visible: boolean }>,
-  format: 'binary' | 'ascii'
+  format: 'binary' | 'ascii',
+  resolution: 'low' | 'medium' | 'high' = 'medium'
 ): string | ArrayBuffer {
   const visibleGeometries = Array.from(geometries.values()).filter((g) => g.visible);
 
@@ -59,19 +64,52 @@ export function buildSTLData(
   // Construir escena temporal con todas las geometrías visibles
   const scene = new Scene();
   const material = new MeshBasicMaterial();
+  const temporaryGeometries: BufferGeometry[] = [];
 
   for (const { geometry } of visibleGeometries) {
-    const mesh = new Mesh(geometry, material);
+    const exportGeometry = applyResolutionToGeometry(geometry, resolution);
+    temporaryGeometries.push(exportGeometry);
+    const mesh = new Mesh(exportGeometry, material);
     scene.add(mesh);
   }
 
   const exporter = new STLExporter();
 
-  if (format === 'binary') {
-    return exporter.parse(scene, { binary: true }) as unknown as ArrayBuffer;
-  }
+  try {
+    if (format === 'binary') {
+      return exporter.parse(scene, { binary: true }) as unknown as ArrayBuffer;
+    }
 
-  return exporter.parse(scene, { binary: false }) as string;
+    return exporter.parse(scene, { binary: false }) as string;
+  } finally {
+    for (const geometry of temporaryGeometries) {
+      geometry.dispose();
+    }
+  }
+}
+
+function applyResolutionToGeometry(
+  geometry: BufferGeometry,
+  resolution: 'low' | 'medium' | 'high'
+): BufferGeometry {
+  const source = geometry.clone();
+
+  if (resolution === 'high') return source;
+
+  const position = source.getAttribute('position');
+  const vertexCount = position?.count ?? 0;
+  if (vertexCount < 12) return source;
+
+  const ratio = resolution === 'low' ? 0.35 : 0.7;
+  const targetCount = Math.max(12, Math.floor(vertexCount * ratio));
+  if (targetCount >= vertexCount) return source;
+
+  try {
+    const modifier = new SimplifyModifier();
+    return modifier.modify(source, targetCount);
+  } catch {
+    return source;
+  }
 }
 
 /**
