@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "@cucumber/cucumber": "^10.3.2",
-    "@serenity-js/assertions": "^3.29.0",
+    "@serenity-js/assertions": "^3.43.1",
     "@serenity-js/core": "^3.29.0",
     "@serenity-js/cucumber": "^3.29.0",
     "@serenity-js/serenity-bdd": "^3.29.0",
