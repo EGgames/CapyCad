@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useFeatureStore, SOLID_FEATURE_TYPES } from '@/stores/featureStore';
 import { useUIStore } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
-import { usePanelOrientation } from '../ui/panelOrientation';
+import { toast } from '@/lib/toast';
+import { usePanelOrientation, usePanelCompact } from '../ui/panelOrientation';
 import {
   FilletDialog,
   ChamferDialog,
@@ -90,7 +91,15 @@ const OffsetIcon = () => (
 // Modifier definitions
 // ────────────────────────────────────────────────────────
 
-type ModifierType = 'sharp' | 'fillet' | 'chamfer' | 'bevel' | 'cove' | 'shell' | 'draft' | 'offset';
+type ModifierType =
+  | 'sharp'
+  | 'fillet'
+  | 'chamfer'
+  | 'bevel'
+  | 'cove'
+  | 'shell'
+  | 'draft'
+  | 'offset';
 
 const EDGE_MODIFIERS: {
   type: ModifierType;
@@ -185,10 +194,23 @@ export default function ToolbarModifiers() {
 
   const orientation = usePanelOrientation();
   const isVertical = orientation === 'vertical';
+  const isCompact = usePanelCompact();
 
   const [activeDialog, setActiveDialog] = useState<ModifierType | null>(null);
   // tracks which edge modifier triggered the picker, so we open the right dialog after confirming
   const [pendingEdgeModifier, setPendingEdgeModifier] = useState<ModifierType | null>(null);
+
+  const getModifierLabel = (type: ModifierType | null): string => {
+    const modifier = EDGE_MODIFIERS.find((item) => item.type === type);
+    return modifier?.label ?? 'modificador';
+  };
+
+  const getModifierErrorMessage = (error: unknown, fallback: string): string => {
+    if (error instanceof Error && error.message.trim().length > 0) {
+      return error.message;
+    }
+    return fallback;
+  };
 
   const selectedFeature = features.find((f) => f.id === selectedFeatureId);
   const isSolid =
@@ -223,7 +245,12 @@ export default function ToolbarModifiers() {
       await createFillet(selectedFeatureId, radius, indices.length > 0 ? indices : undefined);
     } catch (error) {
       console.error('[ToolbarModifiers] Fillet failed:', error);
-      alert('Error al aplicar redondeo. Ver consola para detalles.');
+      toast.error(
+        getModifierErrorMessage(
+          error,
+          'No se pudo aplicar el redondeo. Reduce el radio o prueba con otras aristas.'
+        )
+      );
     }
   };
 
@@ -236,7 +263,12 @@ export default function ToolbarModifiers() {
       await createChamfer(selectedFeatureId, distance, indices.length > 0 ? indices : undefined);
     } catch (error) {
       console.error('[ToolbarModifiers] Chamfer failed:', error);
-      alert('Error al aplicar chaflán. Ver consola para detalles.');
+      toast.error(
+        getModifierErrorMessage(
+          error,
+          'No se pudo aplicar el chaflán. Reduce la distancia o prueba con otras aristas.'
+        )
+      );
     }
   };
 
@@ -249,7 +281,12 @@ export default function ToolbarModifiers() {
       await createBevel(selectedFeatureId, d1, d2, indices.length > 0 ? indices : undefined);
     } catch (error) {
       console.error('[ToolbarModifiers] Bevel failed:', error);
-      alert('Error al aplicar bisel. Ver consola para detalles.');
+      toast.error(
+        getModifierErrorMessage(
+          error,
+          'No se pudo aplicar el bisel. Reduce las distancias o prueba con otras aristas.'
+        )
+      );
     }
   };
 
@@ -262,7 +299,12 @@ export default function ToolbarModifiers() {
       await createCove(selectedFeatureId, radius, indices.length > 0 ? indices : undefined);
     } catch (error) {
       console.error('[ToolbarModifiers] Cove failed:', error);
-      alert('Error al aplicar media caña. Ver consola para detalles.');
+      toast.error(
+        getModifierErrorMessage(
+          error,
+          'No se pudo aplicar la media caña. Reduce el radio o prueba con otras aristas.'
+        )
+      );
     }
   };
 
@@ -272,7 +314,7 @@ export default function ToolbarModifiers() {
       await createShell(selectedFeatureId, thickness);
     } catch (error) {
       console.error('[ToolbarModifiers] Shell failed:', error);
-      alert('Error al aplicar shell. Ver consola para detalles.');
+      toast.error('Error al aplicar shell. Ver consola para detalles.');
     }
   };
 
@@ -282,7 +324,7 @@ export default function ToolbarModifiers() {
       await createDraft(selectedFeatureId, angle, neutralPlane);
     } catch (error) {
       console.error('[ToolbarModifiers] Draft failed:', error);
-      alert('Error al aplicar desmoldeo. Ver consola para detalles.');
+      toast.error('Error al aplicar desmoldeo. Ver consola para detalles.');
     }
   };
 
@@ -292,7 +334,7 @@ export default function ToolbarModifiers() {
       await createOffset(selectedFeatureId, distance);
     } catch (error) {
       console.error('[ToolbarModifiers] Offset failed:', error);
-      alert('Error al aplicar offset. Ver consola para detalles.');
+      toast.error('Error al aplicar offset. Ver consola para detalles.');
     }
   };
 
@@ -321,25 +363,26 @@ export default function ToolbarModifiers() {
 
   // ── render helpers ──
 
-  const renderModifierButton = (mod: { type: ModifierType; label: string; title: string; icon: React.ReactNode }) => {
+  const renderModifierButton = (mod: {
+    type: ModifierType;
+    label: string;
+    title: string;
+    icon: React.ReactNode;
+  }) => {
     const isSharp = mod.type === 'sharp';
     const disabled = isSharp ? false : !canApply;
-    const tooltip = isSharp
-      ? mod.title
-      : canApply
-        ? mod.title
-        : 'Selecciona un sólido primero';
+    const tooltip = isSharp ? mod.title : canApply ? mod.title : 'Selecciona un sólido primero';
 
     return (
       <button
         key={mod.type}
         data-testid={`modifier-${mod.type}-btn`}
         title={tooltip}
-        disabled={!isSharp && isProcessing}
+        disabled={!isSharp && (isProcessing || !canApply)}
         onClick={() => !disabled && handleClick(mod.type)}
         className={cn(
           'flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-md transition-colors',
-          isVertical && 'w-full flex-row justify-start px-3 gap-2 h-9',
+          isVertical && !isCompact && 'w-full flex-row justify-start px-3 gap-2 h-9',
           isSharp
             ? 'text-muted-foreground cursor-default opacity-60'
             : disabled
@@ -352,7 +395,7 @@ export default function ToolbarModifiers() {
         <span
           className={cn(
             'text-muted-foreground leading-none',
-            isVertical ? 'text-sm' : 'text-[9px]'
+            isVertical && !isCompact ? 'text-sm' : isCompact ? 'hidden' : 'text-[9px]'
           )}
         >
           {mod.label}
@@ -366,27 +409,37 @@ export default function ToolbarModifiers() {
       <div
         data-testid="toolbar-modifiers"
         className={cn(
-          'gap-1 px-2 sm:px-3',
+          'gap-1 px-2',
           isVertical ? 'flex flex-col items-stretch py-2' : 'flex items-center overflow-x-auto'
         )}
       >
         {/* Section: Edge treatments */}
         <div
           className={cn(
-            isVertical ? 'flex flex-col items-stretch' : 'flex items-end'
+            isVertical
+              ? isCompact
+                ? 'flex flex-col items-center'
+                : 'flex flex-col items-stretch'
+              : 'flex items-end'
           )}
         >
-          <span
-            className={cn(
-              'text-xs font-medium text-muted-foreground',
-              isVertical ? 'mb-1' : 'mr-1 self-center'
-            )}
-          >
-            Aristas:
-          </span>
+          {!isCompact && (
+            <span
+              className={cn(
+                'text-xs font-medium text-muted-foreground',
+                isVertical ? 'mb-1' : 'mr-1 self-center'
+              )}
+            >
+              Aristas:
+            </span>
+          )}
           <div
             className={cn(
-              isVertical ? 'flex flex-col items-stretch space-y-0.5' : 'flex items-center space-x-0.5'
+              isVertical
+                ? isCompact
+                  ? 'flex flex-col items-center space-y-0.5'
+                  : 'flex flex-col items-stretch space-y-0.5'
+                : 'flex items-center space-x-0.5'
             )}
           >
             {EDGE_MODIFIERS.map(renderModifierButton)}
@@ -394,30 +447,35 @@ export default function ToolbarModifiers() {
         </div>
 
         {/* Divider */}
-        <div
-          className={cn(
-            'bg-border',
-            isVertical ? 'h-px w-full my-1' : 'w-px h-8 mx-1'
-          )}
-        />
+        <div className={cn('bg-border', isVertical ? 'h-px w-full my-1' : 'w-px h-8 mx-1')} />
 
         {/* Section: Solid modifiers */}
         <div
           className={cn(
-            isVertical ? 'flex flex-col items-stretch' : 'flex items-end'
+            isVertical
+              ? isCompact
+                ? 'flex flex-col items-center'
+                : 'flex flex-col items-stretch'
+              : 'flex items-end'
           )}
         >
-          <span
-            className={cn(
-              'text-xs font-medium text-muted-foreground',
-              isVertical ? 'mb-1' : 'mr-1 self-center'
-            )}
-          >
-            Sólido:
-          </span>
+          {!isCompact && (
+            <span
+              className={cn(
+                'text-xs font-medium text-muted-foreground',
+                isVertical ? 'mb-1' : 'mr-1 self-center'
+              )}
+            >
+              Sólido:
+            </span>
+          )}
           <div
             className={cn(
-              isVertical ? 'flex flex-col items-stretch space-y-0.5' : 'flex items-center space-x-0.5'
+              isVertical
+                ? isCompact
+                  ? 'flex flex-col items-center space-y-0.5'
+                  : 'flex flex-col items-stretch space-y-0.5'
+                : 'flex items-center space-x-0.5'
             )}
           >
             {SOLID_MODIFIERS.map(renderModifierButton)}
@@ -427,39 +485,52 @@ export default function ToolbarModifiers() {
 
       {/* Edge picker HUD — shown while user selects edges in the viewport */}
       {modifierPicker && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-lg border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur-sm">
+        <div className="fixed bottom-6 left-1/2 z-50 flex w-[min(92vw,42rem)] -translate-x-1/2 flex-col gap-3 rounded-lg border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur-sm">
           {modifierPicker.loading ? (
             <span className="text-sm text-muted-foreground">Cargando aristas…</span>
           ) : (
-            <span className="text-sm text-foreground">
-              {modifierPicker.selectedIndices.length === 0
-                ? 'Haz click en aristas para seleccionarlas (todas si no hay selección)'
-                : `${modifierPicker.selectedIndices.length} arista${modifierPicker.selectedIndices.length !== 1 ? 's' : ''} seleccionada${modifierPicker.selectedIndices.length !== 1 ? 's' : ''}`}
-            </span>
-          )}
-          {!modifierPicker.loading && (
             <>
-              <button
-                className="rounded-md border border-border bg-muted px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
-                onClick={() => selectAllModifierEdges()}
-                title="Deseleccionar todo (aplicar a todas las aristas)"
-              >
-                Todas
-              </button>
-              <button
-                className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-                onClick={handleConfirmEdgePicker}
-              >
-                Confirmar
-              </button>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  Selección de aristas para {getModifierLabel(pendingEdgeModifier)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  1. Haz click en las aristas azules del visor. 2. Confirma para abrir los
+                  parámetros. 3. Si no eliges ninguna, se aplicará a toda la pieza.
+                </p>
+              </div>
+              <span className="text-sm text-foreground">
+                {modifierPicker.selectedIndices.length === 0
+                  ? 'Sin aristas seleccionadas todavía.'
+                  : `${modifierPicker.selectedIndices.length} arista${modifierPicker.selectedIndices.length !== 1 ? 's' : ''} seleccionada${modifierPicker.selectedIndices.length !== 1 ? 's' : ''}`}
+              </span>
             </>
           )}
-          <button
-            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
-            onClick={handleCancelEdgePicker}
-          >
-            Cancelar
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            {!modifierPicker.loading && (
+              <>
+                <button
+                  className="rounded-md border border-border bg-muted px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+                  onClick={() => selectAllModifierEdges()}
+                  title="Deseleccionar todo (aplicar a todas las aristas)"
+                >
+                  Usar todas
+                </button>
+                <button
+                  className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  onClick={handleConfirmEdgePicker}
+                >
+                  Confirmar selección
+                </button>
+              </>
+            )}
+            <button
+              className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+              onClick={handleCancelEdgePicker}
+            >
+              Cancelar
+            </button>
+          </div>
         </div>
       )}
 
@@ -467,37 +538,58 @@ export default function ToolbarModifiers() {
       <FilletDialog
         open={activeDialog === 'fillet'}
         onClose={() => setActiveDialog(null)}
-        onApply={(radius) => { handleFillet(radius); setActiveDialog(null); }}
+        onApply={(radius) => {
+          handleFillet(radius);
+          setActiveDialog(null);
+        }}
       />
       <ChamferDialog
         open={activeDialog === 'chamfer'}
         onClose={() => setActiveDialog(null)}
-        onApply={(distance) => { handleChamfer(distance); setActiveDialog(null); }}
+        onApply={(distance) => {
+          handleChamfer(distance);
+          setActiveDialog(null);
+        }}
       />
       <BevelDialog
         open={activeDialog === 'bevel'}
         onClose={() => setActiveDialog(null)}
-        onApply={(d1, d2) => { handleBevel(d1, d2); setActiveDialog(null); }}
+        onApply={(d1, d2) => {
+          handleBevel(d1, d2);
+          setActiveDialog(null);
+        }}
       />
       <CoveDialog
         open={activeDialog === 'cove'}
         onClose={() => setActiveDialog(null)}
-        onApply={(radius) => { handleCove(radius); setActiveDialog(null); }}
+        onApply={(radius) => {
+          handleCove(radius);
+          setActiveDialog(null);
+        }}
       />
       <ShellDialog
         open={activeDialog === 'shell'}
         onClose={() => setActiveDialog(null)}
-        onApply={(thickness) => { handleShell(thickness); setActiveDialog(null); }}
+        onApply={(thickness) => {
+          handleShell(thickness);
+          setActiveDialog(null);
+        }}
       />
       <DraftDialog
         open={activeDialog === 'draft'}
         onClose={() => setActiveDialog(null)}
-        onApply={(angle, neutralPlane) => { handleDraft(angle, neutralPlane); setActiveDialog(null); }}
+        onApply={(angle, neutralPlane) => {
+          handleDraft(angle, neutralPlane);
+          setActiveDialog(null);
+        }}
       />
       <OffsetDialog
         open={activeDialog === 'offset'}
         onClose={() => setActiveDialog(null)}
-        onApply={(distance) => { handleOffset(distance); setActiveDialog(null); }}
+        onApply={(distance) => {
+          handleOffset(distance);
+          setActiveDialog(null);
+        }}
       />
     </>
   );

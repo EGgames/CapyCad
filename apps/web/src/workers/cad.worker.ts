@@ -126,13 +126,27 @@ interface RevolvePayload {
  * El variant `boolean` es recursivo para encadenar booleanas.
  */
 type BooleanShapeDescriptor =
-  | { kind: 'extrude'; entities: SketchEntity[]; distance: number; direction: 'positive' | 'negative' | 'both'; canvasWidth?: number; canvasHeight?: number }
+  | {
+      kind: 'extrude';
+      entities: SketchEntity[];
+      distance: number;
+      direction: 'positive' | 'negative' | 'both';
+      canvasWidth?: number;
+      canvasHeight?: number;
+    }
   | { kind: 'box'; width: number; height: number; depth: number }
   | { kind: 'sphere'; radius: number }
   | { kind: 'cylinder'; radius: number; height: number }
   | { kind: 'cone'; baseRadius: number; topRadius: number; height: number }
   | { kind: 'torus'; majorRadius: number; minorRadius: number }
-  | { kind: 'boolean'; target: BooleanShapeDescriptor; targetTranslation: { x: number; y: number; z: number }; tool: BooleanShapeDescriptor; toolTranslation: { x: number; y: number; z: number }; operation: 'union' | 'subtract' | 'intersect' };
+  | {
+      kind: 'boolean';
+      target: BooleanShapeDescriptor;
+      targetTranslation: { x: number; y: number; z: number };
+      tool: BooleanShapeDescriptor;
+      toolTranslation: { x: number; y: number; z: number };
+      operation: 'union' | 'subtract' | 'intersect';
+    };
 
 interface BooleanPayload {
   target: BooleanShapeDescriptor;
@@ -348,7 +362,12 @@ function entitiesToWire(entities: SketchEntity[], cw = 800, ch = 600): any {
           const vy1 = cy_occ - Math.sin(a1) * r_occ;
           const vx2 = cx_occ + Math.cos(a2) * r_occ;
           const vy2 = cy_occ - Math.sin(a2) * r_occ;
-          wireBuilder.Add_1(new oc.BRepBuilderAPI_MakeEdge_3(new oc.gp_Pnt_3(vx1, vy1, 0), new oc.gp_Pnt_3(vx2, vy2, 0)).Edge());
+          wireBuilder.Add_1(
+            new oc.BRepBuilderAPI_MakeEdge_3(
+              new oc.gp_Pnt_3(vx1, vy1, 0),
+              new oc.gp_Pnt_3(vx2, vy2, 0)
+            ).Edge()
+          );
         }
         continue;
       }
@@ -491,9 +510,9 @@ function executeGetEdges(payload: GetEdgesPayload): EdgeSegmentData[] {
           index,
           // Aplicar rotateGeometry90: OCC Z-up (x,y,z) → Three.js Y-up (x,z,−y)
           // para que los puntos coincidan con las coordenadas del mesh renderizado.
-          start: { x: pStart.X(), y:  pStart.Z(), z: -pStart.Y() },
-          mid:   { x: pMid.X(),   y:  pMid.Z(),   z: -pMid.Y()   },
-          end:   { x: pEnd.X(),   y:  pEnd.Z(),   z: -pEnd.Y()   },
+          start: { x: pStart.X(), y: pStart.Z(), z: -pStart.Y() },
+          mid: { x: pMid.X(), y: pMid.Z(), z: -pMid.Y() },
+          end: { x: pEnd.X(), y: pEnd.Z(), z: -pEnd.Y() },
         });
       } catch {
         // skip degenerate edges
@@ -516,6 +535,8 @@ function executeFillet(payload: FilletPayload): GeometryData {
   if (!oc) throw new Error('OpenCascade not initialized');
 
   const { TopAbs_ShapeEnum, TopoDS } = oc as any;
+  const selectedEdgesExplicitly = !!(payload.edgeIndices && payload.edgeIndices.length > 0);
+  let attemptedEdges = 0;
 
   try {
     let baseShape = buildShapeForBoolean(payload.source);
@@ -536,9 +557,8 @@ function executeFillet(payload: FilletPayload): GeometryData {
       (oc as any).ChFi3d_FilletShape.ChFi3d_Rational
     );
 
-    const allowedSet = payload.edgeIndices && payload.edgeIndices.length > 0
-      ? new Set(payload.edgeIndices)
-      : null;
+    const allowedSet =
+      payload.edgeIndices && payload.edgeIndices.length > 0 ? new Set(payload.edgeIndices) : null;
 
     const edgeExplorer = new oc.TopExp_Explorer_2(
       baseShape,
@@ -550,17 +570,35 @@ function executeFillet(payload: FilletPayload): GeometryData {
     while (edgeExplorer.More()) {
       if (!allowedSet || allowedSet.has(edgeIdx)) {
         const edge = TopoDS.Edge_1(edgeExplorer.Current());
+        attemptedEdges++;
         filleter.Add_2(payload.radius, edge);
       }
       edgeIdx++;
       edgeExplorer.Next();
     }
 
+    if (attemptedEdges === 0) {
+      throw new Error(
+        createModifierFailureMessage(
+          'el redondeo',
+          'radio',
+          attemptedEdges,
+          selectedEdgesExplicitly
+        )
+      );
+    }
+
     const filletedShape = filleter.Shape();
     return rotateGeometry90(triangulateShape(filletedShape));
   } catch (error) {
     console.error('[CAD Worker] Fillet failed:', error);
-    throw error;
+    throw normalizeModifierError(
+      'el redondeo',
+      'radio',
+      attemptedEdges,
+      selectedEdgesExplicitly,
+      error
+    );
   }
 }
 
@@ -571,6 +609,8 @@ function executeChamfer(payload: ChamferPayload): GeometryData {
   if (!oc) throw new Error('OpenCascade not initialized');
 
   const { TopAbs_ShapeEnum, TopoDS } = oc as any;
+  const selectedEdgesExplicitly = !!(payload.edgeIndices && payload.edgeIndices.length > 0);
+  let attemptedEdges = 0;
 
   try {
     let baseShape = buildShapeForBoolean(payload.source);
@@ -588,9 +628,8 @@ function executeChamfer(payload: ChamferPayload): GeometryData {
 
     const chamferer = new oc.BRepFilletAPI_MakeChamfer(baseShape);
 
-    const allowedSet = payload.edgeIndices && payload.edgeIndices.length > 0
-      ? new Set(payload.edgeIndices)
-      : null;
+    const allowedSet =
+      payload.edgeIndices && payload.edgeIndices.length > 0 ? new Set(payload.edgeIndices) : null;
 
     const edgeExplorer = new oc.TopExp_Explorer_2(
       baseShape,
@@ -602,17 +641,35 @@ function executeChamfer(payload: ChamferPayload): GeometryData {
     while (edgeExplorer.More()) {
       if (!allowedSet || allowedSet.has(edgeIdx)) {
         const edge = TopoDS.Edge_1(edgeExplorer.Current());
+        attemptedEdges++;
         chamferer.Add_2(payload.chamferDistance, edge);
       }
       edgeIdx++;
       edgeExplorer.Next();
     }
 
+    if (attemptedEdges === 0) {
+      throw new Error(
+        createModifierFailureMessage(
+          'el chaflán',
+          'distancia',
+          attemptedEdges,
+          selectedEdgesExplicitly
+        )
+      );
+    }
+
     const chamferedShape = chamferer.Shape();
     return rotateGeometry90(triangulateShape(chamferedShape));
   } catch (error) {
     console.error('[CAD Worker] Chamfer failed:', error);
-    throw error;
+    throw normalizeModifierError(
+      'el chaflán',
+      'distancia',
+      attemptedEdges,
+      selectedEdgesExplicitly,
+      error
+    );
   }
 }
 
@@ -625,6 +682,8 @@ function executeBevel(payload: BevelPayload): GeometryData {
   if (!oc) throw new Error('OpenCascade not initialized');
 
   const { TopAbs_ShapeEnum, TopoDS } = oc as any;
+  const selectedEdgesExplicitly = !!(payload.edgeIndices && payload.edgeIndices.length > 0);
+  let attemptedEdges = 0;
 
   try {
     let baseShape = buildShapeForBoolean(payload.source);
@@ -669,13 +728,13 @@ function executeBevel(payload: BevelPayload): GeometryData {
     }
 
     const bevel = new oc.BRepFilletAPI_MakeChamfer(baseShape);
-    const allowedSet = payload.edgeIndices && payload.edgeIndices.length > 0
-      ? new Set(payload.edgeIndices)
-      : null;
+    const allowedSet =
+      payload.edgeIndices && payload.edgeIndices.length > 0 ? new Set(payload.edgeIndices) : null;
     let bevelIdx = 0;
     for (const { edge, face } of edgeFaceEntries) {
       if (!allowedSet || allowedSet.has(bevelIdx)) {
         try {
+          attemptedEdges++;
           bevel.Add_3(payload.d1, payload.d2, edge, face);
         } catch {
           // arista no válida para bisel — saltar
@@ -684,11 +743,28 @@ function executeBevel(payload: BevelPayload): GeometryData {
       bevelIdx++;
     }
 
+    if (attemptedEdges === 0) {
+      throw new Error(
+        createModifierFailureMessage(
+          'el bisel',
+          'distancia',
+          attemptedEdges,
+          selectedEdgesExplicitly
+        )
+      );
+    }
+
     const beveledShape = bevel.Shape();
     return rotateGeometry90(triangulateShape(beveledShape));
   } catch (error) {
     console.error('[CAD Worker] Bevel failed:', error);
-    throw error;
+    throw normalizeModifierError(
+      'el bisel',
+      'distancia',
+      attemptedEdges,
+      selectedEdgesExplicitly,
+      error
+    );
   }
 }
 
@@ -701,6 +777,8 @@ function executeCove(payload: CovePayload): GeometryData {
   if (!oc) throw new Error('OpenCascade not initialized');
 
   const { TopAbs_ShapeEnum, TopoDS } = oc as any;
+  const selectedEdgesExplicitly = !!(payload.edgeIndices && payload.edgeIndices.length > 0);
+  let attemptedEdges = 0;
 
   try {
     let baseShape = buildShapeForBoolean(payload.source);
@@ -721,9 +799,8 @@ function executeCove(payload: CovePayload): GeometryData {
       (oc as any).ChFi3d_FilletShape.ChFi3d_QuasiAngular
     );
 
-    const coveAllowedSet = payload.edgeIndices && payload.edgeIndices.length > 0
-      ? new Set(payload.edgeIndices)
-      : null;
+    const coveAllowedSet =
+      payload.edgeIndices && payload.edgeIndices.length > 0 ? new Set(payload.edgeIndices) : null;
 
     const edgeExplorer = new oc.TopExp_Explorer_2(
       baseShape,
@@ -734,17 +811,35 @@ function executeCove(payload: CovePayload): GeometryData {
     while (edgeExplorer.More()) {
       if (!coveAllowedSet || coveAllowedSet.has(coveIdx)) {
         const edge = TopoDS.Edge_1(edgeExplorer.Current());
+        attemptedEdges++;
         coveBuilder.Add_2(payload.radius, edge);
       }
       coveIdx++;
       edgeExplorer.Next();
     }
 
+    if (attemptedEdges === 0) {
+      throw new Error(
+        createModifierFailureMessage(
+          'la media caña',
+          'radio',
+          attemptedEdges,
+          selectedEdgesExplicitly
+        )
+      );
+    }
+
     const coveShape = coveBuilder.Shape();
     return rotateGeometry90(triangulateShape(coveShape));
   } catch (error) {
     console.error('[CAD Worker] Cove failed:', error);
-    throw error;
+    throw normalizeModifierError(
+      'la media caña',
+      'radio',
+      attemptedEdges,
+      selectedEdgesExplicitly,
+      error
+    );
   }
 }
 
@@ -972,9 +1067,20 @@ function executeDraft(payload: DraftPayload): GeometryData {
 
     const angleRad = (payload.angle * Math.PI) / 180;
 
-    // Dirección de extracción del molde (en Z por defecto para XY plane)
-    const pullDir = new oc.gp_Dir_4(0, 0, 1);
-    // Plano neutro en Z=0
+    // Dirección de extracción del molde según el plano neutro seleccionado
+    let pullDir: any;
+    switch (payload.neutralPlane) {
+      case 'XZ':
+        pullDir = new oc.gp_Dir_4(0, 1, 0);
+        break; // eje Y para plano XZ
+      case 'YZ':
+        pullDir = new oc.gp_Dir_4(1, 0, 0);
+        break; // eje X para plano YZ
+      default:
+        pullDir = new oc.gp_Dir_4(0, 0, 1);
+        break; // eje Z para plano XY
+    }
+    // Plano neutro en el origen con la dirección calculada
     const neutralPlane = new oc.gp_Pln_2(new oc.gp_Ax3_4(new oc.gp_Pnt_3(0, 0, 0), pullDir));
 
     const drafter = new oc.BRepOffsetAPI_DraftAngle_2(baseShape);
@@ -1068,9 +1174,16 @@ function executeOffset(payload: OffsetPayload): GeometryData {
 
 function applyFilletToShape(shape: any, radius: number, edgeIndices?: number[]): any {
   const { TopAbs_ShapeEnum, TopoDS } = oc as any;
-  const filleter = new oc.BRepFilletAPI_MakeFillet(shape, (oc as any).ChFi3d_FilletShape.ChFi3d_Rational);
+  const filleter = new oc.BRepFilletAPI_MakeFillet(
+    shape,
+    (oc as any).ChFi3d_FilletShape.ChFi3d_Rational
+  );
   const allowed = edgeIndices && edgeIndices.length > 0 ? new Set(edgeIndices) : null;
-  const exp = new oc.TopExp_Explorer_2(shape, TopAbs_ShapeEnum.TopAbs_EDGE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+  const exp = new oc.TopExp_Explorer_2(
+    shape,
+    TopAbs_ShapeEnum.TopAbs_EDGE,
+    TopAbs_ShapeEnum.TopAbs_SHAPE
+  );
   let i = 0;
   while (exp.More()) {
     if (!allowed || allowed.has(i)) filleter.Add_2(radius, TopoDS.Edge_1(exp.Current()));
@@ -1084,7 +1197,11 @@ function applyChamferToShape(shape: any, distance: number, edgeIndices?: number[
   const { TopAbs_ShapeEnum, TopoDS } = oc as any;
   const chamferer = new oc.BRepFilletAPI_MakeChamfer(shape);
   const allowed = edgeIndices && edgeIndices.length > 0 ? new Set(edgeIndices) : null;
-  const exp = new oc.TopExp_Explorer_2(shape, TopAbs_ShapeEnum.TopAbs_EDGE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+  const exp = new oc.TopExp_Explorer_2(
+    shape,
+    TopAbs_ShapeEnum.TopAbs_EDGE,
+    TopAbs_ShapeEnum.TopAbs_SHAPE
+  );
   let i = 0;
   while (exp.More()) {
     if (!allowed || allowed.has(i)) chamferer.Add_2(distance, TopoDS.Edge_1(exp.Current()));
@@ -1098,14 +1215,25 @@ function applyBevelToShape(shape: any, d1: number, d2: number, edgeIndices?: num
   const { TopAbs_ShapeEnum, TopoDS } = oc as any;
   const entries: Array<{ edge: any; face: any }> = [];
   const seen = new Set<number>();
-  const faceExp = new oc.TopExp_Explorer_2(shape, TopAbs_ShapeEnum.TopAbs_FACE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+  const faceExp = new oc.TopExp_Explorer_2(
+    shape,
+    TopAbs_ShapeEnum.TopAbs_FACE,
+    TopAbs_ShapeEnum.TopAbs_SHAPE
+  );
   while (faceExp.More()) {
     const face = TopoDS.Face_1(faceExp.Current());
-    const edgeExp = new oc.TopExp_Explorer_2(face, TopAbs_ShapeEnum.TopAbs_EDGE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+    const edgeExp = new oc.TopExp_Explorer_2(
+      face,
+      TopAbs_ShapeEnum.TopAbs_EDGE,
+      TopAbs_ShapeEnum.TopAbs_SHAPE
+    );
     while (edgeExp.More()) {
       const edge = TopoDS.Edge_1(edgeExp.Current());
       const h: number = edge.HashCode(10_000_000);
-      if (!seen.has(h)) { seen.add(h); entries.push({ edge, face }); }
+      if (!seen.has(h)) {
+        seen.add(h);
+        entries.push({ edge, face });
+      }
       edgeExp.Next();
     }
     faceExp.Next();
@@ -1114,7 +1242,13 @@ function applyBevelToShape(shape: any, d1: number, d2: number, edgeIndices?: num
   const allowed = edgeIndices && edgeIndices.length > 0 ? new Set(edgeIndices) : null;
   let i = 0;
   for (const { edge, face } of entries) {
-    if (!allowed || allowed.has(i)) { try { bevel.Add_3(d1, d2, edge, face); } catch { /* skip */ } }
+    if (!allowed || allowed.has(i)) {
+      try {
+        bevel.Add_3(d1, d2, edge, face);
+      } catch {
+        /* skip */
+      }
+    }
     i++;
   }
   return bevel.Shape();
@@ -1122,9 +1256,16 @@ function applyBevelToShape(shape: any, d1: number, d2: number, edgeIndices?: num
 
 function applyCoveToShape(shape: any, radius: number, edgeIndices?: number[]): any {
   const { TopAbs_ShapeEnum, TopoDS } = oc as any;
-  const builder = new oc.BRepFilletAPI_MakeFillet(shape, (oc as any).ChFi3d_FilletShape.ChFi3d_QuasiAngular);
+  const builder = new oc.BRepFilletAPI_MakeFillet(
+    shape,
+    (oc as any).ChFi3d_FilletShape.ChFi3d_QuasiAngular
+  );
   const allowed = edgeIndices && edgeIndices.length > 0 ? new Set(edgeIndices) : null;
-  const exp = new oc.TopExp_Explorer_2(shape, TopAbs_ShapeEnum.TopAbs_EDGE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+  const exp = new oc.TopExp_Explorer_2(
+    shape,
+    TopAbs_ShapeEnum.TopAbs_EDGE,
+    TopAbs_ShapeEnum.TopAbs_SHAPE
+  );
   let i = 0;
   while (exp.More()) {
     if (!allowed || allowed.has(i)) builder.Add_2(radius, TopoDS.Edge_1(exp.Current()));
@@ -1134,12 +1275,68 @@ function applyCoveToShape(shape: any, radius: number, edgeIndices?: number[]): a
   return builder.Shape();
 }
 
+function createModifierFailureMessage(
+  modifierLabel: string,
+  controlLabel: string,
+  attemptedEdges: number,
+  selectedEdgesExplicitly: boolean,
+  rawMessage?: string
+): string {
+  if (attemptedEdges === 0) {
+    return selectedEdgesExplicitly
+      ? `Las aristas seleccionadas ya no son válidas para ${modifierLabel}. Vuelve a seleccionarlas e inténtalo de nuevo.`
+      : `La figura no tiene aristas válidas para ${modifierLabel}.`;
+  }
+
+  const genericFailure = `No se pudo aplicar ${modifierLabel} con ese ${controlLabel} en las aristas elegidas. Reduce el valor o prueba con otras aristas.`;
+
+  if (!rawMessage) return genericFailure;
+
+  const lower = rawMessage.toLowerCase();
+  if (
+    lower.includes('stdfail') ||
+    lower.includes('brep') ||
+    lower.includes('builder') ||
+    lower.includes('fillet') ||
+    lower.includes('chamfer') ||
+    lower.includes('null') ||
+    lower === '[object object]'
+  ) {
+    return genericFailure;
+  }
+
+  return `${genericFailure} Detalle técnico: ${rawMessage}`;
+}
+
+function normalizeModifierError(
+  modifierLabel: string,
+  controlLabel: string,
+  attemptedEdges: number,
+  selectedEdgesExplicitly: boolean,
+  error: unknown
+): Error {
+  const rawMessage = error instanceof Error ? error.message : String(error ?? '');
+  return new Error(
+    createModifierFailureMessage(
+      modifierLabel,
+      controlLabel,
+      attemptedEdges,
+      selectedEdgesExplicitly,
+      rawMessage
+    )
+  );
+}
+
 function applyShellToShape(shape: any, thickness: number): any {
   const { TopAbs_ShapeEnum, TopoDS, BRep_Tool, TopLoc_Location_1: TopLoc_Location } = oc as any;
   new oc.BRepMesh_IncrementalMesh_2(shape, 0.1, false, 0.5, true);
   let topFace: any = null;
   let maxZ = -Infinity;
-  const faceExp = new oc.TopExp_Explorer_2(shape, TopAbs_ShapeEnum.TopAbs_FACE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+  const faceExp = new oc.TopExp_Explorer_2(
+    shape,
+    TopAbs_ShapeEnum.TopAbs_FACE,
+    TopAbs_ShapeEnum.TopAbs_SHAPE
+  );
   while (faceExp.More()) {
     const face = TopoDS.Face_1(faceExp.Current());
     const loc = new TopLoc_Location();
@@ -1150,7 +1347,10 @@ function applyShellToShape(shape: any, thickness: number): any {
       const n = tri.NbNodes();
       for (let k = 1; k <= n; k++) sumZ += tri.Node(k).Z();
       const avg = sumZ / n;
-      if (avg > maxZ) { maxZ = avg; topFace = face; }
+      if (avg > maxZ) {
+        maxZ = avg;
+        topFace = face;
+      }
     }
     faceExp.Next();
   }
@@ -1158,19 +1358,43 @@ function applyShellToShape(shape: any, thickness: number): any {
   const facesToRemove = new (oc as any).TopTools_ListOfShape();
   facesToRemove.Append_1(topFace);
   const shellMaker = new oc.BRepOffsetAPI_MakeThickSolid();
-  shellMaker.MakeThickSolidByJoin(shape, facesToRemove, -thickness, 1e-3,
-    (oc as any).BRepOffset_Mode.BRepOffset_Skin, false, false,
-    (oc as any).GeomAbs_JoinType.GeomAbs_Arc, false, new oc.Message_ProgressRange_1());
+  shellMaker.MakeThickSolidByJoin(
+    shape,
+    facesToRemove,
+    -thickness,
+    1e-3,
+    (oc as any).BRepOffset_Mode.BRepOffset_Skin,
+    false,
+    false,
+    (oc as any).GeomAbs_JoinType.GeomAbs_Arc,
+    false,
+    new oc.Message_ProgressRange_1()
+  );
   return shellMaker.Shape();
 }
 
-function applyDraftToShape(shape: any, angle: number, _neutralPlane: 'XY' | 'XZ' | 'YZ'): any {
+function applyDraftToShape(shape: any, angle: number, neutralPlane: 'XY' | 'XZ' | 'YZ'): any {
   const { TopAbs_ShapeEnum, TopoDS } = oc as any;
   const angleRad = (angle * Math.PI) / 180;
-  const pullDir = new oc.gp_Dir_4(0, 0, 1);
+  let pullDir: any;
+  switch (neutralPlane) {
+    case 'XZ':
+      pullDir = new oc.gp_Dir_4(0, 1, 0);
+      break;
+    case 'YZ':
+      pullDir = new oc.gp_Dir_4(1, 0, 0);
+      break;
+    default:
+      pullDir = new oc.gp_Dir_4(0, 0, 1);
+      break;
+  }
   const neutralPln = new oc.gp_Pln_2(new oc.gp_Ax3_4(new oc.gp_Pnt_3(0, 0, 0), pullDir));
   const drafter = new oc.BRepOffsetAPI_DraftAngle_2(shape);
-  const faceExp = new oc.TopExp_Explorer_2(shape, TopAbs_ShapeEnum.TopAbs_FACE, TopAbs_ShapeEnum.TopAbs_SHAPE);
+  const faceExp = new oc.TopExp_Explorer_2(
+    shape,
+    TopAbs_ShapeEnum.TopAbs_FACE,
+    TopAbs_ShapeEnum.TopAbs_SHAPE
+  );
   while (faceExp.More()) {
     drafter.Add(TopoDS.Face_1(faceExp.Current()), pullDir, angleRad, neutralPln);
     faceExp.Next();
@@ -1181,9 +1405,17 @@ function applyDraftToShape(shape: any, angle: number, _neutralPlane: 'XY' | 'XZ'
 
 function applyOffsetToShape(shape: any, distance: number): any {
   const offsetMaker = new oc.BRepOffsetAPI_MakeOffsetShape();
-  offsetMaker.PerformByJoin(shape, distance, 1e-3,
-    (oc as any).BRepOffset_Mode.BRepOffset_Skin, false, false,
-    (oc as any).GeomAbs_JoinType.GeomAbs_Arc, false, new oc.Message_ProgressRange_1());
+  offsetMaker.PerformByJoin(
+    shape,
+    distance,
+    1e-3,
+    (oc as any).BRepOffset_Mode.BRepOffset_Skin,
+    false,
+    false,
+    (oc as any).GeomAbs_JoinType.GeomAbs_Arc,
+    false,
+    new oc.Message_ProgressRange_1()
+  );
   if (!offsetMaker.IsDone()) return shape;
   return offsetMaker.Shape();
 }
@@ -1194,13 +1426,27 @@ function applyModifierChain(shape: any, modifiers: AppliedModifier[]): any {
   for (const mod of modifiers) {
     try {
       switch (mod.type) {
-        case 'fillet':  result = applyFilletToShape(result, mod.params.radius!, mod.edgeIndices); break;
-        case 'chamfer': result = applyChamferToShape(result, mod.params.distance!, mod.edgeIndices); break;
-        case 'bevel':   result = applyBevelToShape(result, mod.params.d1!, mod.params.d2!, mod.edgeIndices); break;
-        case 'cove':    result = applyCoveToShape(result, mod.params.radius!, mod.edgeIndices); break;
-        case 'shell':   result = applyShellToShape(result, mod.params.thickness!); break;
-        case 'draft':   result = applyDraftToShape(result, mod.params.angle!, mod.params.neutralPlane ?? 'XY'); break;
-        case 'offset':  result = applyOffsetToShape(result, mod.params.distance!); break;
+        case 'fillet':
+          result = applyFilletToShape(result, mod.params.radius!, mod.edgeIndices);
+          break;
+        case 'chamfer':
+          result = applyChamferToShape(result, mod.params.distance!, mod.edgeIndices);
+          break;
+        case 'bevel':
+          result = applyBevelToShape(result, mod.params.d1!, mod.params.d2!, mod.edgeIndices);
+          break;
+        case 'cove':
+          result = applyCoveToShape(result, mod.params.radius!, mod.edgeIndices);
+          break;
+        case 'shell':
+          result = applyShellToShape(result, mod.params.thickness!);
+          break;
+        case 'draft':
+          result = applyDraftToShape(result, mod.params.angle!, mod.params.neutralPlane ?? 'XY');
+          break;
+        case 'offset':
+          result = applyOffsetToShape(result, mod.params.distance!);
+          break;
       }
     } catch (err) {
       console.warn('[CAD Worker] applyModifierChain step failed, skipping:', mod.type, err);
@@ -1216,7 +1462,13 @@ function buildShapeForBoolean(desc: BooleanShapeDescriptor): any {
 
   switch (desc.kind) {
     case 'extrude':
-      return buildExtrudedShape(desc.entities, desc.distance, desc.direction, desc.canvasWidth, desc.canvasHeight);
+      return buildExtrudedShape(
+        desc.entities,
+        desc.distance,
+        desc.direction,
+        desc.canvasWidth,
+        desc.canvasHeight
+      );
 
     case 'box': {
       // Z-up: width en X, depth en Y, height en Z
@@ -1235,7 +1487,12 @@ function buildShapeForBoolean(desc: BooleanShapeDescriptor): any {
 
     case 'cone': {
       const zAxis = new oc.gp_Ax2_3(new oc.gp_Pnt_3(0, 0, 0), new oc.gp_Dir_4(0, 0, 1));
-      return new oc.BRepPrimAPI_MakeCone_3(zAxis, desc.baseRadius, desc.topRadius, desc.height).Shape();
+      return new oc.BRepPrimAPI_MakeCone_3(
+        zAxis,
+        desc.baseRadius,
+        desc.topRadius,
+        desc.height
+      ).Shape();
     }
 
     case 'torus': {
@@ -1291,7 +1548,8 @@ function executeBoolean(payload: BooleanPayload): GeometryData {
       return new oc.BRepBuilderAPI_Transform_2(shape, trsf, false).Shape();
     };
 
-    if (payload.targetTranslation) targetShape = applyTranslation(targetShape, payload.targetTranslation);
+    if (payload.targetTranslation)
+      targetShape = applyTranslation(targetShape, payload.targetTranslation);
     if (payload.toolTranslation) toolShape = applyTranslation(toolShape, payload.toolTranslation);
 
     let resultShape: any;
