@@ -515,7 +515,7 @@ export class CADWorkerClient {
     sourceTranslation: { x: number; y: number; z: number },
     radius: number,
     edgeIndices?: number[],
-    sourceModifiers?: AppliedModifier[]
+    _sourceModifiers?: AppliedModifier[]
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
       throw new Error('CAD Worker not initialized. Call initialize() first.');

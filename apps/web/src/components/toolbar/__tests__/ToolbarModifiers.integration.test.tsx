@@ -132,7 +132,7 @@ describe('ToolbarModifiers — integración', () => {
       const extrude = mkExtrude('e1');
       resetStore([extrude], 'e1');
       useFeatureStore.setState({
-        geometries: new Map([['e1', new BufferGeometry()]]),
+        geometries: new Map([['e1', { featureId: 'e1', geometry: new BufferGeometry(), visible: true }]]),
       });
       render(<ToolbarModifiers />);
       const actionTypes = ['fillet', 'chamfer', 'bevel', 'cove', 'shell', 'draft', 'offset'];

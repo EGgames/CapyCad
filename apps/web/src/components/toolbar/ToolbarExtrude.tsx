@@ -10,13 +10,13 @@ import {
   SweepDialog,
   LoftDialog,
 } from './Tool3DDialogs';
-import { FeatureType, type SketchEntity, type ExtrudeFeature } from '@capycad/shared-types';
+import { FeatureType, type ExtrudeFeature } from '@capycad/shared-types';
 
 type ExtrudeAction = 'extrude' | 'revolve' | 'sweep' | 'loft';
 
 export default function ToolbarExtrude() {
   const { activeSketch, setEditMode, selectedEntities } = useSketchStore();
-  const { createExtrude, createRevolve, createSweep, createLoft, isProcessing } =
+  const { createRevolve, createSweep, createLoft, isProcessing } =
     useFeatureStore();
   const selectedFeatureId = useFeatureStore((s) => s.selectedFeatureId);
   const features = useFeatureStore((s) => s.features);
@@ -41,48 +41,6 @@ export default function ToolbarExtrude() {
       return false;
     }
     return true;
-  };
-
-  const handleExtrude = async (
-    distance: number,
-    direction: 'positive' | 'negative' | 'both'
-  ) => {
-    // Caso 1: hay un sketch 2D activo con entidades seleccionadas → las extruimos.
-    if (activeSketch && selectedEntities.length > 0) {
-      const entitiesToExtrude = activeSketch.entities.filter((e) =>
-        selectedEntities.includes(e.id)
-      );
-      if (entitiesToExtrude.length === 0) {
-        alert('Las entidades seleccionadas no son válidas');
-        return;
-      }
-      try {
-        await createExtrude(activeSketch.id, entitiesToExtrude, distance, direction);
-        setEditMode('3d');
-      } catch (error) {
-        console.error('Error al extruir:', error);
-        alert('Error al extruir. Ver consola para detalles.');
-      }
-      return;
-    }
-    // Caso 2: hay una feature 3D seleccionada con sketch base → re-extruimos esa cara.
-    if (selectedExtrudableFeature) {
-      const baseSketch = selectedExtrudableFeature.sketch;
-      const entities: SketchEntity[] = baseSketch.entities;
-      if (entities.length === 0) {
-        alert('La cara seleccionada no tiene un perfil válido para extruir');
-        return;
-      }
-      try {
-        await createExtrude(baseSketch.id, entities, distance, direction);
-        setEditMode('3d');
-      } catch (error) {
-        console.error('Error al extruir desde cara 3D:', error);
-        alert('Error al extruir. Ver consola para detalles.');
-      }
-      return;
-    }
-    alert('Selecciona un sketch 2D o una cara de una figura 3D para extruir');
   };
 
   const handleRevolve = async (axis: 'X' | 'Y' | 'Z', angle: number) => {
