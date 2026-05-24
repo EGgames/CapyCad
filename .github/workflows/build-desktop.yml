@@ -45,7 +45,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       # Build la web app primero (el renderer de Electron)
       - name: Build web renderer

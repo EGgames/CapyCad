@@ -87,10 +87,10 @@ Este PR fue creado automáticamente al actualizar la rama \`test\`.
           cache: pnpm
 
       - name: Instalar dependencias
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Type check
-        run: pnpm --filter @capycad/web exec tsc --noEmit
+        run: pnpm --filter @capycad/web run type-check
 
       - name: Build web
         run: pnpm --filter @capycad/web build
@@ -108,7 +108,7 @@ Este PR fue creado automáticamente al actualizar la rama \`test\`.
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       startsWith(github.ref, 'refs/tags/v') ||
-      (github.event_name == 'workflow_dispatch' && inputs.build_release == true)
+      (github.event_name == 'workflow_dispatch' && inputs.build_release == 'true')
     strategy:
       fail-fast: false
       matrix:
@@ -133,7 +133,7 @@ Este PR fue creado automáticamente al actualizar la rama \`test\`.
           cache: pnpm
 
       - name: Instalar dependencias
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Build web renderer
         run: pnpm --filter @capycad/web build
