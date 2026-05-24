@@ -8,8 +8,8 @@ const sketchCanvas = () =>
 /** Selector del canvas 3D (react-three-fiber monta dentro de #canvas-container) */
 const canvas3D = () => PageElement.located(By.css('#canvas-container canvas'));
 
-/** Barra de herramientas */
-const toolbar = () => PageElement.located(By.css('[data-testid="toolbar"]'));
+/** Barra de herramientas de archivo (siempre renderizada — ToolbarFile) */
+const toolbar = () => PageElement.located(By.css('[data-testid="toolbar-file"]'));
 
 /** Panel lateral */
 const sidebar = () => PageElement.located(By.css('[data-testid="sidebar"]'));
@@ -27,8 +27,8 @@ const initOverlay = () => PageElement.located(By.css('[data-testid="cad-init-ove
 /** Barra de herramientas booleanas (panel) */
 const toolbarBoolean = () => PageElement.located(By.css('[data-testid="toolbar-boolean"]'));
 
-/** Botón que abre el diálogo de booleana */
-const booleanOpenBtn = () => PageElement.located(By.css('[data-testid="boolean-open-btn"]'));
+/** Botón de operación booleana unión (siempre visible en modo 3D) */
+const booleanOpenBtn = () => PageElement.located(By.css('[data-testid="boolean-union-btn"]'));
 
 /** Mensaje "no hay extrusiones" dentro del diálogo de booleana */
 const booleanEmptyMsg = () => PageElement.located(By.css('[data-testid="boolean-empty-msg"]'));
@@ -82,11 +82,18 @@ export const AppState = {
       return !present;
     }),
 
-  /** ¿Existe un botón con el title dado? */
+  /** ¿Existe un botón con el title dado?
+   *  Estrategia: exact → contains → data-testid partial match */
   buttonIsPresent: (title: string) =>
-    Question.about(`la presencia del botón "${title}"`, (actor) =>
-      actor.answer(PageElement.located(By.css(`[title="${title}"]`)).isPresent())
-    ),
+    Question.about(`la presencia del botón "${title}"`, async (actor) => {
+      // 1. Exact title match
+      if (await actor.answer(PageElement.located(By.css(`[title="${title}"]`)).isPresent())) return true;
+      // 2. Title contains (handles conditional suffixes like "Extruir — requiere …")
+      if (await actor.answer(PageElement.located(By.css(`[title*="${title}"]`)).isPresent())) return true;
+      // 3. data-testid partial match (handles modifier buttons whose title is a long description)
+      const key = title.toLowerCase().replace(/\s+/g, '-');
+      return actor.answer(PageElement.located(By.css(`[data-testid*="${key}-btn"]`)).isPresent());
+    }),
 
   /** ¿Está activo (seleccionado) un botón de herramienta? Busca clase de activación. */
   toolButtonIsActive: (toolLabel: string) =>

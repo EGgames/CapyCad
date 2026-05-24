@@ -69,6 +69,14 @@ Característica: Aplicación CAD — Funcionalidades principales
   Escenario: Botón de exportar visible
     Entonces debería ver el botón "Exportar modelo"
 
+  Escenario: Seleccionar herramienta de arco
+    Cuando el usuario selecciona la herramienta "Arco (A)"
+    Entonces la herramienta "Arco (A)" debería estar activa
+
+  Escenario: Seleccionar herramienta de spline
+    Cuando el usuario selecciona la herramienta "Spline (B)"
+    Entonces la herramienta "Spline (B)" debería estar activa
+
   # ── Herramientas 3D visibles en modo 3D ────────────────────────────────────
 
   Escenario: Herramientas 3D visibles al cambiar modo
@@ -78,17 +86,32 @@ Característica: Aplicación CAD — Funcionalidades principales
     Y debería ver el botón "Fillet"
     Y debería ver el botón "Chamfer"
 
+  Escenario: Herramientas de modificadores 3D visibles
+    Cuando el usuario activa el modo 3D
+    Entonces debería ver el botón "Shell"
+    Y debería ver el botón "Offset"
+    Y debería ver el botón "Draft"
+    Y debería ver el botón "Bevel"
+    Y debería ver el botón "Cove"
+
+  Escenario: Herramientas booleanas visibles en modo 3D
+    Cuando el usuario activa el modo 3D
+    Entonces debería ver la barra de herramientas booleanas
+    Y el botón de booleana debería estar presente
+
+  Escenario: Motor CAD sin errores críticos
+    Entonces no debería mostrar banner de error del motor CAD
+
+  # ── Diálogo de operaciones booleanas ───────────────────────────────────────
+
+  Escenario: Diálogo booleana muestra mensaje sin extrusiones
+    Cuando el usuario activa el modo 3D
+    Y el usuario abre el diálogo de booleana
+    Entonces el diálogo de booleana debería mostrar el mensaje de "no hay extrusiones"
+
   # ── Sin errores ────────────────────────────────────────────────────────────
 
   Escenario: Motor CAD sin banner de error
     Entonces no debería mostrar banner de error del motor CAD
 
-  # ── Booleanas ──────────────────────────────────────────────────────────────
 
-  Escenario: Barra de herramientas booleanas presente
-    Entonces debería ver la barra de herramientas booleanas
-    Y el botón de booleana debería estar presente
-
-  Escenario: Diálogo de booleana se abre y muestra mensaje cuando no hay extrusiones
-    Cuando el usuario abre el diálogo de booleana
-    Entonces el diálogo de booleana debería mostrar el mensaje de "no hay extrusiones"
