@@ -14,8 +14,10 @@ import type { SketchEntity, Line, Circle, Rectangle, Arc, Polygon } from '@capyc
 let oc: any = null;
 let isInitialized = false;
 
-/** Píxeles por unidad world (debe coincidir con PPU de ExtrudePreviewGizmo) */
-const PPU_WORKER = 50;
+/** Píxeles por milímetro (debe coincidir con PIXELS_PER_UNIT de SketchIn3D) */
+const PIXELS_PER_MM = 50;
+/** Alias interno para compatibilidad */
+const PPU_WORKER = PIXELS_PER_MM;
 
 interface WorkerMessage {
   id: string;
@@ -440,7 +442,7 @@ function buildExtrudedShape(
   }
 
   const signedDistance = direction === 'negative' ? -distance : distance;
-  const extrusionVec = new oc.gp_Vec_4(0, 0, signedDistance);
+  const extrusionVec = new oc.gp_Vec_4(0, signedDistance, 0);
 
   const prism = new oc.BRepPrimAPI_MakePrism_1(face, extrusionVec, false, true);
   return prism.Shape();
