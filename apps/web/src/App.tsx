@@ -13,6 +13,7 @@ import DraggablePanel from './components/ui/DraggablePanel';
 import PanelToggleMenu from './components/ui/PanelToggleMenu';
 import DockZone from './components/ui/DockZone';
 import DockDropOverlay from './components/ui/DockDropOverlay';
+import { Toaster } from './components/ui/Toaster';
 import { useSketchStore } from './stores/sketchStore';
 import { useUIStore, type PanelId } from './stores/uiStore';
 import { useCADWorker } from './hooks/useCADWorker';
@@ -192,6 +193,9 @@ function App() {
 
       {/* Dock drop overlay (visible while dragging) */}
       <DockDropOverlay />
+
+      {/* Toast notifications */}
+      <Toaster />
     </div>
   );
 }

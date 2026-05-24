@@ -87,7 +87,7 @@ export default function Sidebar() {
   };
 
   return (
-    <div data-testid="sidebar" className="flex w-56 flex-col lg:w-64">
+    <div data-testid="sidebar" className="flex w-full min-w-0 flex-col">
       {/* Feature list */}
       <div className="flex-1 overflow-y-auto p-2">
         {allFeatures.length === 0 ? (

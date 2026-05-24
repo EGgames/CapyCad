@@ -302,7 +302,8 @@ export function FilletDialog({
           unit={displayUnit}
         />
         <p className="text-xs text-muted-foreground">
-          Se aplica a todas las aristas de la feature seleccionada.
+          Se aplica a las aristas seleccionadas en el visor. Si no seleccionas ninguna, se usa toda
+          la feature.
         </p>
         <ActionButton
           label="Aplicar Fillet"
@@ -344,7 +345,8 @@ export function ChamferDialog({
           unit={displayUnit}
         />
         <p className="text-xs text-muted-foreground">
-          Se aplica a todas las aristas de la feature seleccionada.
+          Se aplica a las aristas seleccionadas en el visor. Si no seleccionas ninguna, se usa toda
+          la feature.
         </p>
         <ActionButton
           label="Aplicar Chamfer"
@@ -636,8 +638,8 @@ export function BooleanDialog({
             data-testid="boolean-empty-msg"
             className="rounded border border-yellow-500/40 bg-yellow-950/30 p-2 text-xs text-yellow-300"
           >
-            No hay extrusiones disponibles. Crea al menos dos extrusiones (Extrude) para
-            aplicar una operación booleana.
+            No hay extrusiones disponibles. Crea al menos dos extrusiones (Extrude) para aplicar una
+            operación booleana.
           </p>
         )}
         {onlyOne && (
@@ -645,8 +647,7 @@ export function BooleanDialog({
             data-testid="boolean-onlyone-msg"
             className="rounded border border-yellow-500/40 bg-yellow-950/30 p-2 text-xs text-yellow-300"
           >
-            Solo hay una extrusión. Necesitas al menos dos extrusiones para una operación
-            booleana.
+            Solo hay una extrusión. Necesitas al menos dos extrusiones para una operación booleana.
           </p>
         )}
 
@@ -942,9 +943,30 @@ export function BoxDialog({
             onOrientationChange?.(rot);
           }}
         />
-        <NumberField label="Ancho" value={toDisplay(widthMm, displayUnit)} onChange={(v) => setWidthMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
-        <NumberField label="Alto" value={toDisplay(heightMm, displayUnit)} onChange={(v) => setHeightMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
-        <NumberField label="Profundidad" value={toDisplay(depthMm, displayUnit)} onChange={(v) => setDepthMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
+        <NumberField
+          label="Ancho"
+          value={toDisplay(widthMm, displayUnit)}
+          onChange={(v) => setWidthMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
+        />
+        <NumberField
+          label="Alto"
+          value={toDisplay(heightMm, displayUnit)}
+          onChange={(v) => setHeightMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
+        />
+        <NumberField
+          label="Profundidad"
+          value={toDisplay(depthMm, displayUnit)}
+          onChange={(v) => setDepthMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
+        />
         <ActionButton
           label="Crear Cubo"
           onClick={() => {
@@ -1042,8 +1064,22 @@ export function CylinderDialog({
             onOrientationChange?.(rot);
           }}
         />
-        <NumberField label="Radio" value={toDisplay(radiusMm, displayUnit)} onChange={(v) => setRadiusMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
-        <NumberField label="Altura" value={toDisplay(heightMm, displayUnit)} onChange={(v) => setHeightMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
+        <NumberField
+          label="Radio"
+          value={toDisplay(radiusMm, displayUnit)}
+          onChange={(v) => setRadiusMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
+        />
+        <NumberField
+          label="Altura"
+          value={toDisplay(heightMm, displayUnit)}
+          onChange={(v) => setHeightMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
+        />
         <ActionButton
           label="Crear Cilindro"
           onClick={() => {
@@ -1090,9 +1126,30 @@ export function ConeDialog({
             onOrientationChange?.(rot);
           }}
         />
-        <NumberField label="Radio base" value={toDisplay(baseRadiusMm, displayUnit)} onChange={(v) => setBaseRadiusMm(fromDisplay(v, displayUnit))} min={0} step={unitStep(displayUnit)} unit={displayUnit} />
-        <NumberField label="Radio superior" value={toDisplay(topRadiusMm, displayUnit)} onChange={(v) => setTopRadiusMm(fromDisplay(v, displayUnit))} min={0} step={unitStep(displayUnit)} unit={displayUnit} />
-        <NumberField label="Altura" value={toDisplay(heightMm, displayUnit)} onChange={(v) => setHeightMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
+        <NumberField
+          label="Radio base"
+          value={toDisplay(baseRadiusMm, displayUnit)}
+          onChange={(v) => setBaseRadiusMm(fromDisplay(v, displayUnit))}
+          min={0}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
+        />
+        <NumberField
+          label="Radio superior"
+          value={toDisplay(topRadiusMm, displayUnit)}
+          onChange={(v) => setTopRadiusMm(fromDisplay(v, displayUnit))}
+          min={0}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
+        />
+        <NumberField
+          label="Altura"
+          value={toDisplay(heightMm, displayUnit)}
+          onChange={(v) => setHeightMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
+        />
         <p className="text-xs text-muted-foreground">Radio superior = 0 para un cono puntiagudo.</p>
         <ActionButton
           label="Crear Cono"
@@ -1139,8 +1196,22 @@ export function TorusDialog({
             onOrientationChange?.(rot);
           }}
         />
-        <NumberField label="Radio mayor" value={toDisplay(majorRadiusMm, displayUnit)} onChange={(v) => setMajorRadiusMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
-        <NumberField label="Radio menor" value={toDisplay(minorRadiusMm, displayUnit)} onChange={(v) => setMinorRadiusMm(fromDisplay(v, displayUnit))} min={unitMin(displayUnit)} step={unitStep(displayUnit)} unit={displayUnit} />
+        <NumberField
+          label="Radio mayor"
+          value={toDisplay(majorRadiusMm, displayUnit)}
+          onChange={(v) => setMajorRadiusMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
+        />
+        <NumberField
+          label="Radio menor"
+          value={toDisplay(minorRadiusMm, displayUnit)}
+          onChange={(v) => setMinorRadiusMm(fromDisplay(v, displayUnit))}
+          min={unitMin(displayUnit)}
+          step={unitStep(displayUnit)}
+          unit={displayUnit}
+        />
         <p className="text-xs text-muted-foreground">
           El radio menor debe ser menor que el radio mayor.
         </p>
@@ -1192,8 +1263,8 @@ export function BevelDialog({
           unit="mm"
         />
         <p className="text-xs text-muted-foreground">
-          Dos distancias distintas generan un chaflán asimétrico (ángulo variable).
-          Se aplica a todas las aristas de la feature seleccionada.
+          Dos distancias distintas generan un chaflán asimétrico (ángulo variable). Se aplica a las
+          aristas seleccionadas en el visor. Si no seleccionas ninguna, se usa toda la feature.
         </p>
         <ActionButton
           label="Aplicar Bisel"
@@ -1234,8 +1305,8 @@ export function CoveDialog({
           unit="mm"
         />
         <p className="text-xs text-muted-foreground">
-          Genera una curva cóncava en las aristas — perfil de media caña (QuasiAngular).
-          Se aplica a todas las aristas de la feature seleccionada.
+          Genera una curva cóncava en las aristas — perfil de media caña (QuasiAngular). Se aplica a
+          las aristas seleccionadas en el visor. Si no seleccionas ninguna, se usa toda la feature.
         </p>
         <ActionButton
           label="Aplicar Media Caña"

@@ -1,16 +1,13 @@
-import {
-  Square,
-  Circle,
-  Minus,
-  Move,
-  Hexagon,
-  Spline,
-  Ruler,
-  GitBranch,
-} from 'lucide-react';
+import { Square, Circle, Minus, Move, Hexagon, Spline, Ruler, GitBranch } from 'lucide-react';
+
+const EllipseIcon = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+    <ellipse cx="12" cy="12" rx="10" ry="6" />
+  </svg>
+);
 import { useSketchStore } from '@/stores/sketchStore';
 import { cn } from '@/lib/utils';
-import { usePanelOrientation } from '../ui/panelOrientation';
+import { usePanelOrientation, usePanelCompact } from '../ui/panelOrientation';
 
 export default function Toolbar2D() {
   const {
@@ -32,43 +29,47 @@ export default function Toolbar2D() {
     { icon: Hexagon, label: 'Polígono (P)', action: 'polygon' as const },
     { icon: Spline, label: 'Arco (A)', action: 'arc' as const },
     { icon: GitBranch, label: 'Spline (B)', action: 'spline' as const },
+    { icon: EllipseIcon, label: 'Elipse (E)', action: 'ellipse' as const },
     { icon: Ruler, label: 'Medir (M)', action: 'measure' as const },
   ];
 
   const orientation = usePanelOrientation();
   const isVertical = orientation === 'vertical';
+  const isCompact = usePanelCompact();
 
   return (
     <div
       data-testid="toolbar-2d"
       className={cn(
-        'gap-1 px-2 sm:px-4',
-        isVertical
-          ? 'flex flex-col items-stretch py-2'
-          : 'flex items-center overflow-x-auto'
+        'gap-1 px-2',
+        isVertical ? 'flex flex-col items-stretch py-2' : 'flex items-center overflow-x-auto'
       )}
     >
       <div
         className={cn(
           isVertical
-            ? 'flex flex-col items-stretch space-y-1'
+            ? isCompact
+              ? 'flex flex-col items-center space-y-1'
+              : 'flex flex-col items-stretch space-y-1'
             : 'flex items-center space-x-1'
         )}
       >
-        <span
-          className={cn(
-            'text-xs font-medium text-muted-foreground',
-            isVertical ? 'mb-1' : 'mr-2'
-          )}
-        >
-          2D:
-        </span>
+        {!isCompact && (
+          <span
+            className={cn(
+              'text-xs font-medium text-muted-foreground',
+              isVertical ? 'mb-1' : 'mr-2'
+            )}
+          >
+            2D:
+          </span>
+        )}
         {tools2D.map((tool) => (
           <button
             key={tool.action}
             onClick={() => setActiveTool(tool.action)}
             className={cn(
-              isVertical
+              isVertical && !isCompact
                 ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
                 : 'flex h-9 w-9 items-center justify-center rounded-md',
               activeTool === tool.action ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
@@ -76,12 +77,12 @@ export default function Toolbar2D() {
             title={tool.label}
           >
             <tool.icon className="h-4 w-4" />
-            {isVertical && <span className="text-sm">{tool.label}</span>}
+            {isVertical && !isCompact && <span className="text-sm">{tool.label}</span>}
           </button>
         ))}
 
         {/* Config medición: unidad y escala */}
-        {activeTool === 'measure' && (
+        {activeTool === 'measure' && !isCompact && (
           <div className="ml-2 flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-950/30 px-2 py-0.5">
             <button
               onClick={() => setMeasureUnit('mm')}
@@ -122,7 +123,7 @@ export default function Toolbar2D() {
           </div>
         )}
 
-        {activeTool === 'polygon' && (
+        {activeTool === 'polygon' && !isCompact && (
           <div className="ml-1 flex items-center space-x-1">
             <span className="text-xs text-muted-foreground">Lados:</span>
             <button

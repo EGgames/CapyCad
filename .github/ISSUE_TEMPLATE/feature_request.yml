@@ -1,0 +1,28 @@
+name: Feature Request
+description: Proponer nueva funcionalidad
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema a resolver
+      description: ¿Qué necesidad de negocio o usuario existe?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta
+      description: ¿Qué solución propones?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación
+      description: Define cómo validar que está completo
+  - type: textarea
+    id: risks
+    attributes:
+      label: Riesgos / impacto
+      description: Dependencias, impacto técnico, posibles tradeoffs

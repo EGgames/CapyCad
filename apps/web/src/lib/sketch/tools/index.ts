@@ -8,3 +8,4 @@ export { MeasureTool } from './MeasureTool';
 export type { MeasureOptions } from './MeasureTool';
 export { SplineTool } from './SplineTool';
 export type { Spline } from './SplineTool';
+export { EllipseTool } from './EllipseTool';

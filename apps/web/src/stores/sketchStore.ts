@@ -14,7 +14,8 @@ export type DrawTool =
   | 'rectangle'
   | 'polygon'
   | 'measure'
-  | 'spline';
+  | 'spline'
+  | 'ellipse';
 
 /**
  * Modos de edición

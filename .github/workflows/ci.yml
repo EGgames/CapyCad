@@ -1,60 +1,61 @@
 name: CI
 
 on:
-  push:
-    branches: ["**"]
   pull_request:
-    branches: ["**"]
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-    name: Type-check & Build
+  quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.6
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
-      - name: Type-check (shared-types)
-        run: pnpm --filter @capycad/shared-types exec tsc --noEmit
+      - name: Dependency audit (high+)
+        run: |
+          pnpm audit --prod --json > audit-report.json
+          pnpm audit --prod --audit-level high
 
-      - name: Type-check (web)
-        run: pnpm --filter @capycad/web exec tsc --noEmit
-
-      - name: Build web
-        run: pnpm --filter @capycad/web build
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
-
-  test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Upload dependency audit report
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          node-version: 20
-          cache: pnpm
+          name: dependency-audit-report
+          path: audit-report.json
 
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+      - name: Lint
+        run: pnpm lint
 
-      - name: Run tests
-        run: pnpm --filter @capycad/web run test:run
+      - name: Type check web
+        run: pnpm --filter @stl-model/web type-check
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

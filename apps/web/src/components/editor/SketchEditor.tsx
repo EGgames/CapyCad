@@ -22,6 +22,7 @@ import {
   ArcTool,
   MeasureTool,
   SplineTool,
+  EllipseTool,
 } from '@/lib/sketch/tools';
 import {
   Vector2,
@@ -32,6 +33,7 @@ import {
   Circle as CircleEntity,
   Line as LineEntity,
   Arc as ArcEntity,
+  Ellipse as EllipseEntity,
 } from '@capycad/shared-types';
 import { ZoomIn, ZoomOut, Maximize2, Box, X } from 'lucide-react';
 import { useMemo } from 'react';

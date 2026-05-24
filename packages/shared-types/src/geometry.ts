@@ -10,6 +10,7 @@ export enum SketchEntityType {
   RECTANGLE = 'rectangle',
   POLYGON = 'polygon',
   SPLINE = 'spline',
+  ELLIPSE = 'ellipse',
 }
 
 /**
@@ -72,6 +73,18 @@ export interface Polygon extends SketchEntity {
   radius: number;
   sides: number;
   rotation?: number; // radianes
+}
+
+/**
+ * Elipse 2D
+ */
+export interface Ellipse extends SketchEntity {
+  type: SketchEntityType.ELLIPSE;
+  center: Vector2;
+  /** Semi-eje mayor (horizontal en su orientación natural) en píxeles */
+  radiusX: number;
+  /** Semi-eje menor (vertical en su orientación natural) en píxeles */
+  radiusY: number;
 }
 
 /**

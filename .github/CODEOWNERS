@@ -1,0 +1,16 @@
+# Default owners
+
+- @emilianogalmarini
+
+# Frontend domain
+
+/apps/web/ @emilianogalmarini
+
+# Shared packages
+
+/packages/ @emilianogalmarini
+
+# Docs and workflows
+
+/docs/ @emilianogalmarini
+/.github/ @emilianogalmarini

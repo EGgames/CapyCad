@@ -163,9 +163,7 @@ export default function Toolbar() {
       alert('Selecciona al menos una entidad del sketch 2D antes de extruir');
       return;
     }
-    const entitiesToExtrude = activeSketch!.entities.filter((e) =>
-      selectedEntities.includes(e.id)
-    );
+    const entitiesToExtrude = activeSketch!.entities.filter((e) => selectedEntities.includes(e.id));
     if (entitiesToExtrude.length === 0) {
       alert('Las entidades seleccionadas no se encontraron en el sketch activo');
       return;
@@ -523,7 +521,7 @@ export default function Toolbar() {
   ];
 
   return (
-    <div data-testid="toolbar" className="flex items-center px-2 sm:px-4 overflow-x-auto gap-1">
+    <div data-testid="toolbar" className="flex items-center px-2 overflow-x-auto gap-1">
       {/* Logo */}
       <div className="mr-6 flex items-center space-x-2">
         <div className="flex h-8 w-8 items-center justify-center rounded bg-primary">
@@ -796,7 +794,9 @@ export default function Toolbar() {
           title="Unidad de medida 3D"
         >
           {ALL_DISPLAY_UNITS.map((u) => (
-            <option key={u} value={u}>{u}</option>
+            <option key={u} value={u}>
+              {u}
+            </option>
           ))}
         </select>
       </div>

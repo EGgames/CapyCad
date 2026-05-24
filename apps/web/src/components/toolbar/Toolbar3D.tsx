@@ -2,8 +2,6 @@ import {
   Box,
   RotateCcw,
   Layers,
-  CircleDot,
-  PenTool,
   BoxSelect,
   Route,
   Grid3x3,
@@ -19,13 +17,12 @@ import {
 import { useSketchStore } from '@/stores/sketchStore';
 import { useFeatureStore } from '@/stores/featureStore';
 import { cn } from '@/lib/utils';
+import { toast } from '@/lib/toast';
 import { useState, useEffect } from 'react';
-import { usePanelOrientation } from '../ui/panelOrientation';
+import { usePanelOrientation, usePanelCompact } from '../ui/panelOrientation';
 import {
   ExtrudeDialog,
   RevolveDialog,
-  FilletDialog,
-  ChamferDialog,
   ShellDialog,
   SweepDialog,
   LoftDialog,
@@ -44,8 +41,6 @@ type Tool3DAction =
   | 'extrude'
   | 'revolve'
   | 'loft'
-  | 'fillet'
-  | 'chamfer'
   | 'shell'
   | 'sweep'
   | 'pattern_linear'
@@ -64,8 +59,6 @@ export default function Toolbar3D() {
     createExtrude,
     createRevolve,
     createLoft,
-    createFillet,
-    createChamfer,
     createShell,
     createSweep,
     createLinearPattern,
@@ -99,7 +92,7 @@ export default function Toolbar3D() {
 
   const requireSketch = (): boolean => {
     if (!activeSketch || activeSketch.entities.length === 0) {
-      alert('No hay un sketch activo con entidades');
+      toast.warning('No hay un sketch activo con entidades');
       return false;
     }
     return true;
@@ -107,7 +100,7 @@ export default function Toolbar3D() {
 
   const requireSelectedFeature = (): string | null => {
     if (!selectedFeatureId) {
-      alert('Selecciona una feature 3D primero');
+      toast.warning('Selecciona una feature 3D primero');
       return null;
     }
     return selectedFeatureId;
@@ -116,14 +109,12 @@ export default function Toolbar3D() {
   const handleExtrude = async (distance: number, direction: 'positive' | 'negative' | 'both') => {
     if (!requireSketch()) return;
     if (selectedEntities.length === 0) {
-      alert('Selecciona al menos una entidad del sketch 2D antes de extruir');
+      toast.warning('Selecciona al menos una entidad del sketch 2D antes de extruir');
       return;
     }
-    const entitiesToExtrude = activeSketch!.entities.filter((e) =>
-      selectedEntities.includes(e.id)
-    );
+    const entitiesToExtrude = activeSketch!.entities.filter((e) => selectedEntities.includes(e.id));
     if (entitiesToExtrude.length === 0) {
-      alert('Las entidades seleccionadas no se encontraron en el sketch activo');
+      toast.warning('Las entidades seleccionadas no se encontraron en el sketch activo');
       return;
     }
     try {
@@ -131,7 +122,7 @@ export default function Toolbar3D() {
       setEditMode('3d');
     } catch (error) {
       console.error('Error al extruir:', error);
-      alert('Error al extruir. Ver consola para detalles.');
+      toast.error('Error al extruir. Ver consola para detalles.');
     }
   };
 
@@ -142,29 +133,7 @@ export default function Toolbar3D() {
       setEditMode('3d');
     } catch (error) {
       console.error('Error al crear revolución:', error);
-      alert('Error al crear revolución. Ver consola para detalles.');
-    }
-  };
-
-  const handleFillet = async (radius: number) => {
-    const featureId = requireSelectedFeature();
-    if (!featureId) return;
-    try {
-      await createFillet(featureId, radius);
-    } catch (error) {
-      console.error('Error al aplicar fillet:', error);
-      alert('Error al aplicar fillet. Ver consola para detalles.');
-    }
-  };
-
-  const handleChamfer = async (distance: number) => {
-    const featureId = requireSelectedFeature();
-    if (!featureId) return;
-    try {
-      await createChamfer(featureId, distance);
-    } catch (error) {
-      console.error('Error al aplicar chamfer:', error);
-      alert('Error al aplicar chamfer. Ver consola para detalles.');
+      toast.error('Error al crear revolución. Ver consola para detalles.');
     }
   };
 
@@ -175,7 +144,7 @@ export default function Toolbar3D() {
       await createShell(featureId, thickness);
     } catch (error) {
       console.error('Error al aplicar shell:', error);
-      alert('Error al aplicar shell. Ver consola para detalles.');
+      toast.error('Error al aplicar shell. Ver consola para detalles.');
     }
   };
 
@@ -186,22 +155,32 @@ export default function Toolbar3D() {
       setEditMode('3d');
     } catch (error) {
       console.error('Error al crear sweep:', error);
-      alert('Error al crear sweep. Ver consola para detalles.');
+      toast.error('Error al crear sweep. Ver consola para detalles.');
     }
   };
 
   const handleLoft = async (heightBetween: number, topRadius: number, closed: boolean) => {
+    if (!requireSketch()) return;
+    // PPU_WORKER = 50 px/mm; canvas center (400,300) maps to world (0,0).
+    // Section 1: actual sketch entities drawn by the user.
+    // Section 2: a circle of the requested topRadius centered at world origin,
+    //            expressed in canvas coords so entitiesToWire converts correctly.
+    const CANVAS_W = 800;
+    const CANVAS_H = 600;
+    const PPU = 50;
+    const topRadiusPx = topRadius * PPU; // mm → canvas pixels
     try {
       const sections = [
+        { entities: activeSketch!.entities, zOffset: 0 },
         {
           entities: [
-            { id: 'loft-s1', type: 'circle' as const, center: { x: 0, y: 0 }, radius: 10 },
-          ],
-          zOffset: 0,
-        },
-        {
-          entities: [
-            { id: 'loft-s2', type: 'circle' as const, center: { x: 0, y: 0 }, radius: topRadius },
+            {
+              id: 'loft-top',
+              type: 'circle' as const,
+              center: { x: CANVAS_W / 2, y: CANVAS_H / 2 },
+              radius: topRadiusPx,
+              selected: false,
+            },
           ],
           zOffset: heightBetween,
         },
@@ -210,7 +189,7 @@ export default function Toolbar3D() {
       setEditMode('3d');
     } catch (error) {
       console.error('Error al crear loft:', error);
-      alert('Error al crear loft. Ver consola para detalles.');
+      toast.error('Error al crear loft. Ver consola para detalles.');
     }
   };
 
@@ -225,7 +204,7 @@ export default function Toolbar3D() {
       await createLinearPattern(featureId, direction, spacing, instances);
     } catch (error) {
       console.error('Error al crear patrón lineal:', error);
-      alert('Error al crear patrón lineal. Ver consola para detalles.');
+      toast.error('Error al crear patrón lineal. Ver consola para detalles.');
     }
   };
 
@@ -240,7 +219,7 @@ export default function Toolbar3D() {
       await createCircularPattern(featureId, axis, instances, totalAngle);
     } catch (error) {
       console.error('Error al crear patrón circular:', error);
-      alert('Error al crear patrón circular. Ver consola para detalles.');
+      toast.error('Error al crear patrón circular. Ver consola para detalles.');
     }
   };
 
@@ -251,7 +230,7 @@ export default function Toolbar3D() {
       await createDraft(featureId, angle, neutralPlane);
     } catch (error) {
       console.error('Error al aplicar draft:', error);
-      alert('Error al aplicar draft. Ver consola para detalles.');
+      toast.error('Error al aplicar draft. Ver consola para detalles.');
     }
   };
 
@@ -262,7 +241,7 @@ export default function Toolbar3D() {
       await createOffset(featureId, distance);
     } catch (error) {
       console.error('Error al aplicar offset:', error);
-      alert('Error al aplicar offset. Ver consola para detalles.');
+      toast.error('Error al aplicar offset. Ver consola para detalles.');
     }
   };
 
@@ -278,7 +257,7 @@ export default function Toolbar3D() {
       setEditMode('3d');
     } catch (error) {
       console.error('Error al crear cubo:', error);
-      alert('Error al crear cubo. Ver consola para detalles.');
+      toast.error('Error al crear cubo. Ver consola para detalles.');
     } finally {
       cancelPlacement();
     }
@@ -294,7 +273,7 @@ export default function Toolbar3D() {
       setEditMode('3d');
     } catch (error) {
       console.error('Error al crear esfera:', error);
-      alert('Error al crear esfera. Ver consola para detalles.');
+      toast.error('Error al crear esfera. Ver consola para detalles.');
     } finally {
       cancelPlacement();
     }
@@ -311,7 +290,7 @@ export default function Toolbar3D() {
       setEditMode('3d');
     } catch (error) {
       console.error('Error al crear cilindro:', error);
-      alert('Error al crear cilindro. Ver consola para detalles.');
+      toast.error('Error al crear cilindro. Ver consola para detalles.');
     } finally {
       cancelPlacement();
     }
@@ -329,7 +308,7 @@ export default function Toolbar3D() {
       setEditMode('3d');
     } catch (error) {
       console.error('Error al crear cono:', error);
-      alert('Error al crear cono. Ver consola para detalles.');
+      toast.error('Error al crear cono. Ver consola para detalles.');
     } finally {
       cancelPlacement();
     }
@@ -346,7 +325,7 @@ export default function Toolbar3D() {
       setEditMode('3d');
     } catch (error) {
       console.error('Error al crear toroide:', error);
-      alert('Error al crear toroide. Ver consola para detalles.');
+      toast.error('Error al crear toroide. Ver consola para detalles.');
     } finally {
       cancelPlacement();
     }
@@ -361,9 +340,7 @@ export default function Toolbar3D() {
       return;
     }
     if (
-      (action === 'fillet' ||
-        action === 'chamfer' ||
-        action === 'shell' ||
+      (action === 'shell' ||
         action === 'pattern_linear' ||
         action === 'pattern_circular' ||
         action === 'draft' ||
@@ -385,8 +362,6 @@ export default function Toolbar3D() {
     { icon: RotateCcw, label: 'Revolución', action: 'revolve' },
     { icon: Route, label: 'Sweep', action: 'sweep' },
     { icon: Layers, label: 'Loft', action: 'loft' },
-    { icon: CircleDot, label: 'Fillet', action: 'fillet', needsFeature: true },
-    { icon: PenTool, label: 'Chamfer', action: 'chamfer', needsFeature: true },
     { icon: BoxSelect, label: 'Shell', action: 'shell', needsFeature: true },
     { icon: Grid3x3, label: 'Patrón Lineal', action: 'pattern_linear', needsFeature: true },
     { icon: RefreshCw, label: 'Patrón Circular', action: 'pattern_circular', needsFeature: true },
@@ -408,46 +383,47 @@ export default function Toolbar3D() {
 
   const orientation = usePanelOrientation();
   const isVertical = orientation === 'vertical';
+  const isCompact = usePanelCompact();
 
   return (
     <div
       data-testid="toolbar-3d"
       className={cn(
-        'gap-1 px-2 sm:px-4',
-        isVertical
-          ? 'flex flex-col items-stretch py-2'
-          : 'flex items-center overflow-x-auto'
+        'gap-1 px-2',
+        isVertical ? 'flex flex-col items-stretch py-2' : 'flex items-center overflow-x-auto'
       )}
     >
       {/* Herramientas 3D */}
       <div
         className={cn(
           isVertical
-            ? 'flex flex-col items-stretch space-y-1'
+            ? isCompact
+              ? 'flex flex-col items-center space-y-1'
+              : 'flex flex-col items-stretch space-y-1'
             : 'flex items-center space-x-1'
         )}
       >
-        <span
-          className={cn(
-            'text-xs font-medium text-muted-foreground',
-            isVertical ? 'mb-1' : 'mr-2'
-          )}
-        >
-          3D:
-        </span>
+        {!isCompact && (
+          <span
+            className={cn(
+              'text-xs font-medium text-muted-foreground',
+              isVertical ? 'mb-1' : 'mr-2'
+            )}
+          >
+            3D:
+          </span>
+        )}
         {tools3D.map((tool) => {
           const lacksFeature = !!tool.needsFeature && !selectedFeatureId;
           const lacksSketch =
-            (tool.action === 'extrude' ||
-              tool.action === 'revolve' ||
-              tool.action === 'sweep') &&
+            (tool.action === 'extrude' || tool.action === 'revolve' || tool.action === 'sweep') &&
             (!activeSketch || activeSketch.entities.length === 0);
           const disabledByPrereq = lacksFeature || lacksSketch;
           return (
             <button
               key={tool.action}
               className={cn(
-                isVertical
+                isVertical && !isCompact
                   ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
                   : 'flex h-9 w-9 items-center justify-center rounded-md',
                 isProcessing
@@ -467,40 +443,40 @@ export default function Toolbar3D() {
               disabled={isProcessing || disabledByPrereq}
             >
               <tool.icon className="h-4 w-4" />
-              {isVertical && <span className="text-sm">{tool.label}</span>}
+              {isVertical && !isCompact && <span className="text-sm">{tool.label}</span>}
             </button>
           );
         })}
       </div>
 
       {/* Separador */}
-      <div
-        className={cn(
-          isVertical ? 'my-2 h-px w-full bg-border' : 'mx-4 h-8 w-px bg-border'
-        )}
-      />
+      <div className={cn(isVertical ? 'my-2 h-px w-full bg-border' : 'mx-4 h-8 w-px bg-border')} />
 
       {/* Primitivas 3D */}
       <div
         className={cn(
           isVertical
-            ? 'flex flex-col items-stretch space-y-1'
+            ? isCompact
+              ? 'flex flex-col items-center space-y-1'
+              : 'flex flex-col items-stretch space-y-1'
             : 'flex items-center space-x-1'
         )}
       >
-        <span
-          className={cn(
-            'text-xs font-medium text-muted-foreground',
-            isVertical ? 'mb-1' : 'mr-2'
-          )}
-        >
-          Figuras:
-        </span>
+        {!isCompact && (
+          <span
+            className={cn(
+              'text-xs font-medium text-muted-foreground',
+              isVertical ? 'mb-1' : 'mr-2'
+            )}
+          >
+            Figuras:
+          </span>
+        )}
         {toolsPrimitives.map((tool) => (
           <button
             key={tool.action}
             className={cn(
-              isVertical
+              isVertical && !isCompact
                 ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
                 : 'flex h-9 w-9 items-center justify-center rounded-md',
               isProcessing ? 'cursor-wait opacity-50' : 'hover:bg-muted'
@@ -510,7 +486,7 @@ export default function Toolbar3D() {
             disabled={isProcessing}
           >
             <tool.icon className="h-4 w-4" />
-            {isVertical && <span className="text-sm">{tool.label}</span>}
+            {isVertical && !isCompact && <span className="text-sm">{tool.label}</span>}
           </button>
         ))}
       </div>
@@ -525,16 +501,6 @@ export default function Toolbar3D() {
         open={activeDialog === 'revolve'}
         onClose={() => setActiveDialog(null)}
         onApply={handleRevolve}
-      />
-      <FilletDialog
-        open={activeDialog === 'fillet'}
-        onClose={() => setActiveDialog(null)}
-        onApply={handleFillet}
-      />
-      <ChamferDialog
-        open={activeDialog === 'chamfer'}
-        onClose={() => setActiveDialog(null)}
-        onApply={handleChamfer}
       />
       <ShellDialog
         open={activeDialog === 'shell'}

@@ -1,0 +1,39 @@
+name: Bug Report
+description: Reportar un error o regresión
+labels: [bug]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Resumen
+      description: ¿Qué está fallando?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducir
+      description: Pasos detallados para reproducir el problema
+      placeholder: |
+        1. Ir a...
+        2. Hacer click en...
+        3. Ver error...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamiento esperado
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportamiento actual
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Capturas
+      description: Pega stacktrace, logs o imágenes
