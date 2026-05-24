@@ -172,8 +172,22 @@ export const useSketchStore = create<SketchState>((set, get) => ({
   },
 
   addEntity: (entity) => {
-    const { activeSketch, history, historyIndex } = get();
-    if (!activeSketch) return;
+    let { activeSketch, history, historyIndex } = get();
+    if (!activeSketch) {
+      const newSketch: Sketch = {
+        id: nanoid(),
+        name: 'Sketch 1',
+        entities: [],
+        constraints: [],
+        measurements: [],
+        plane: 'XY',
+      };
+      const initialHistory = [{ entities: [] as SketchEntity[], timestamp: Date.now() }];
+      set({ activeSketch: newSketch, history: initialHistory, historyIndex: 0 });
+      activeSketch = newSketch;
+      history = initialHistory;
+      historyIndex = 0;
+    }
 
     const updatedEntities = [...activeSketch.entities, entity];
     const newSketch = { ...activeSketch, entities: updatedEntities };

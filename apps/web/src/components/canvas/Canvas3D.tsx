@@ -240,8 +240,12 @@ function FeatureMeshes({
                 roughness={material.roughness}
                 opacity={isExcluded ? 0.3 : viewMode === 'wireframe' ? 0.1 : material.opacity}
                 transparent={isExcluded || viewMode === 'wireframe' ? true : material.transparent}
-                emissive={isTarget ? '#22d3ee' : isHovered ? '#a78bfa' : (material.emissive ?? '#000000')}
-                emissiveIntensity={isTarget ? 0.25 : isHovered ? 0.15 : (material.emissiveIntensity ?? 0)}
+                emissive={
+                  isTarget ? '#22d3ee' : isHovered ? '#a78bfa' : (material.emissive ?? '#000000')
+                }
+                emissiveIntensity={
+                  isTarget ? 0.25 : isHovered ? 0.15 : (material.emissiveIntensity ?? 0)
+                }
                 wireframe={viewMode === 'wireframe'}
                 envMapIntensity={isRendered ? 1.0 : 0}
                 side={THREE.DoubleSide}
@@ -339,9 +343,17 @@ function EdgeCylinder({
     <mesh
       position={[mid.x, mid.y, mid.z]}
       quaternion={quaternion}
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
-      onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
-      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        document.body.style.cursor = 'pointer';
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = 'auto';
+      }}
     >
       {/* Cilindro principal clicable */}
       <cylinderGeometry args={[radius, radius, length, 8]} />
@@ -363,9 +375,17 @@ function VertexSphere({
   return (
     <mesh
       position={[position.x, position.y, position.z]}
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
-      onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
-      onPointerOut={() => { document.body.style.cursor = 'auto'; }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        document.body.style.cursor = 'pointer';
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = 'auto';
+      }}
     >
       <sphereGeometry args={[0.1, 8, 8]} />
       <meshBasicMaterial color={isSelected ? '#f59e0b' : '#93c5fd'} transparent opacity={0.6} />
@@ -393,13 +413,45 @@ function EdgePickerOverlay() {
               isSelected={isSelected}
               onClick={() => toggleEdge(edge.index)}
             />
-            <VertexSphere position={edge.start} isSelected={isSelected} onClick={() => toggleEdge(edge.index)} />
-            <VertexSphere position={edge.end} isSelected={isSelected} onClick={() => toggleEdge(edge.index)} />
+            <VertexSphere
+              position={edge.start}
+              isSelected={isSelected}
+              onClick={() => toggleEdge(edge.index)}
+            />
+            <VertexSphere
+              position={edge.end}
+              isSelected={isSelected}
+              onClick={() => toggleEdge(edge.index)}
+            />
           </group>
         );
       })}
     </>
   );
+}
+
+/**
+ * Sincroniza la cámara Three.js con el modo de edición del sketch.
+ * - modo '2d': coloca la cámara cenital (Y=50) mirando el plano XZ.
+ * - modo '3d': restaura la vista isométrica por defecto.
+ */
+function CameraSync() {
+  const { camera } = useThree();
+  const editMode = useSketchStore((s) => s.editMode);
+
+  useEffect(() => {
+    if (editMode === '2d') {
+      camera.position.set(0, 50, 0);
+      camera.up.set(0, 0, -1);
+      camera.lookAt(0, 0, 0);
+    } else {
+      camera.position.set(10, 10, 10);
+      camera.up.set(0, 1, 0);
+      camera.lookAt(0, 0, 0);
+    }
+  }, [camera, editMode]);
+
+  return null;
 }
 
 export default function Canvas3D() {
@@ -533,6 +585,7 @@ export default function Canvas3D() {
         {/* Configuración del renderer (tone mapping, exposición) */}
         <RendererSetup />
         <ScreenshotCapture />
+        <CameraSync />
 
         {/* Iluminación configurable — reducida en modo rendered (HDRI toma el rol) */}
         <ambientLight
