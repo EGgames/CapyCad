@@ -2,7 +2,11 @@
   "name": "@capycad/desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "CAD Studio — Electron desktop wrapper",
+  "description": "CapyCad — Electron desktop wrapper",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EGgames/stl-model.git"
+  },
   "main": "src/main.js",
   "scripts": {
     "dev": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron src/main.js",
@@ -16,8 +20,8 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.stlmodel.cadstudio",
-    "productName": "CAD Studio",
+    "appId": "com.capycad.app",
+    "productName": "CapyCad",
     "copyright": "Copyright © 2026 Emiliano Galmarini",
     "directories": {
       "output": "release"
