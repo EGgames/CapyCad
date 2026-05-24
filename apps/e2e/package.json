@@ -9,7 +9,7 @@
     "report": "serenity-bdd run --features ./features"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^10.3.2",
+    "@cucumber/cucumber": "^12.9.0",
     "@serenity-js/assertions": "^3.29.0",
     "@serenity-js/core": "^3.29.0",
     "@serenity-js/cucumber": "^3.29.0",
