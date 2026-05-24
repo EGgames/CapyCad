@@ -38,8 +38,9 @@ jobs:
               --head test \
               --title "release: test -> main" \
               --body "PR automatico creado al actualizar la rama test. Hacer merge para disparar el build multiplataforma y crear la release." \
-              --repo "$GITHUB_REPOSITORY"
-            echo "PR creado."
+              --repo "$GITHUB_REPOSITORY" \
+              || echo "::warning::No se pudo crear el PR automaticamente. Habilite 'Allow GitHub Actions to create and approve pull requests' en Settings > Actions > General, o cree el PR manualmente."
+            echo "Paso completado."
           else
             echo "Ya existe un PR abierto (total: $COUNT). No se crea uno nuevo."
           fi
