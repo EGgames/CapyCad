@@ -7,7 +7,11 @@ import {
   Undo2,
   Redo2,
   ChevronDown,
+  Sun,
+  Moon,
+  Settings,
 } from 'lucide-react';
+import SettingsPanel from '@/components/ui/SettingsPanel';
 import { useSketchStore } from '@/stores/sketchStore';
 import { useFeatureStore } from '@/stores/featureStore';
 import { cn } from '@/lib/utils';
@@ -16,6 +20,7 @@ import { exportModel } from '@/lib/export/modelExporter';
 import { saveProject, loadProject } from '@/lib/project/projectSerializer';
 import { importModelFile } from '@/lib/import/modelImporter';
 import { usePanelOrientation } from '../ui/panelOrientation';
+import { useDarkMode } from '@/hooks/useDarkMode';
 
 export default function ToolbarFile() {
   const {
@@ -42,6 +47,7 @@ export default function ToolbarFile() {
   const activeCanUndo = () => (editMode === '3d' ? featureCanUndo : canUndo());
   const activeCanRedo = () => (editMode === '3d' ? featureCanRedo : canRedo());
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -122,6 +128,7 @@ export default function ToolbarFile() {
 
   const orientation = usePanelOrientation();
   const isVertical = orientation === 'vertical';
+  const { isDark, toggle: toggleDark } = useDarkMode();
   const sep = isVertical ? 'my-1 h-px w-full bg-border' : 'mx-2 h-8 w-px bg-border';
 
   return (
@@ -257,6 +264,24 @@ export default function ToolbarFile() {
       {/* Separador */}
       <div className={sep} />
 
+      {/* Dark mode toggle */}
+      <button
+        onClick={toggleDark}
+        className={cn(
+          isVertical
+            ? 'flex h-9 w-full items-center gap-2 rounded-md px-3 hover:bg-muted'
+            : 'flex h-9 w-9 items-center justify-center rounded-md hover:bg-muted'
+        )}
+        title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+        aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      >
+        {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        {isVertical && <span className="text-sm">{isDark ? 'Modo claro' : 'Modo oscuro'}</span>}
+      </button>
+
+      {/* Separador */}
+      <div className={sep} />
+
       {/* Undo/Redo */}
       <div className={cn(isVertical ? 'flex flex-col items-stretch space-y-1' : 'flex items-center space-x-1')}>
         <button
@@ -284,6 +309,26 @@ export default function ToolbarFile() {
           {isVertical && <span className="text-sm">Rehacer</span>}
         </button>
       </div>
+
+      {/* Separador */}
+      <div className={sep} />
+
+      {/* Configuración */}
+      <button
+        onClick={() => setSettingsOpen(true)}
+        className={cn(
+          isVertical
+            ? 'flex h-9 w-full items-center gap-2 rounded-md px-3 hover:bg-muted'
+            : 'flex h-9 w-9 items-center justify-center rounded-md hover:bg-muted'
+        )}
+        title="Configuración"
+        aria-label="Abrir configuración"
+      >
+        <Settings className="h-4 w-4" />
+        {isVertical && <span className="text-sm">Configuración</span>}
+      </button>
+
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

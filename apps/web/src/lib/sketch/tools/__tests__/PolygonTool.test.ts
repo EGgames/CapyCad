@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PolygonTool } from '@/lib/sketch/tools/PolygonTool';
-import type { Polygon } from '@stl-model/shared-types';
+import type { Polygon } from '@capycad/shared-types';
 
 vi.mock('fabric', () => ({
   Polygon: vi.fn().mockImplementation(() => ({ set: vi.fn(), setCoords: vi.fn() })),

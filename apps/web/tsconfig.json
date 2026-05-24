@@ -1,5 +1,5 @@
 {
-  "extends": "@stl-model/tsconfig/react.json",
+  "extends": "@capycad/tsconfig/react.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {

@@ -1,4 +1,4 @@
-import { Vector2, Arc, SketchEntityType } from '@stl-model/shared-types';
+import { Vector2, Arc, SketchEntityType } from '@capycad/shared-types';
 import { Circle as FabricCircle, Line as FabricLine } from 'fabric';
 import { nanoid } from 'nanoid';
 import { distance } from '../geometry';

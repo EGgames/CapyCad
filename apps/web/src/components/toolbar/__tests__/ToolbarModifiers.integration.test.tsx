@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BufferGeometry } from 'three';
-import { FeatureType, type ExtrudeFeature, type BoxFeature } from '@stl-model/shared-types';
+import { FeatureType, type ExtrudeFeature, type BoxFeature } from '@capycad/shared-types';
 import { useFeatureStore } from '@/stores/featureStore';
 import ToolbarModifiers from '../ToolbarModifiers';
 

@@ -1,4 +1,4 @@
-import { Vector2, Rectangle, SketchEntityType } from '@stl-model/shared-types';
+import { Vector2, Rectangle, SketchEntityType } from '@capycad/shared-types';
 import { Rect } from 'fabric';
 import { nanoid } from 'nanoid';
 import { BaseTool } from './BaseTool';

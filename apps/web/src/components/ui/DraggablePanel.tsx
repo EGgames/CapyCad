@@ -107,7 +107,7 @@ export default function DraggablePanel({
       ref={panelRef}
       className={cn(
         'flex flex-col rounded-lg border border-border bg-card shadow-xl',
-        isFloating && 'absolute z-30',
+        isFloating && 'fixed z-30',
         !isFloating && 'relative',
         isDragging && 'opacity-90 shadow-2xl ring-2 ring-primary/50',
         className

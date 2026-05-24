@@ -1,5 +1,5 @@
 {
-  "name": "@stl-model/tsconfig",
+  "name": "@capycad/tsconfig",
   "version": "0.0.0",
   "private": true,
   "main": "index.js",

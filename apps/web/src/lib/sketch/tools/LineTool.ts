@@ -1,4 +1,4 @@
-import { Vector2, Line, SketchEntityType } from '@stl-model/shared-types';
+import { Vector2, Line, SketchEntityType } from '@capycad/shared-types';
 import { Line as FabricLine } from 'fabric';
 import { nanoid } from 'nanoid';
 import { BaseTool } from './BaseTool';

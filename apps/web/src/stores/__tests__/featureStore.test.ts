@@ -19,7 +19,7 @@ import {
   BooleanFeature,
   SketchEntityType,
   type Line,
-} from '@stl-model/shared-types';
+} from '@capycad/shared-types';
 import { BufferGeometry } from 'three';
 
 const mockGeometryData = {

@@ -8,7 +8,7 @@
 
 import initOpenCascade from 'opencascade.js';
 import opencascadeWasm from 'opencascade.js/dist/opencascade.full.wasm?url';
-import type { SketchEntity, Line, Circle, Rectangle, Arc, Polygon } from '@stl-model/shared-types';
+import type { SketchEntity, Line, Circle, Rectangle, Arc, Polygon } from '@capycad/shared-types';
 
 // Los tipos de OpenCascade.js no cubren todos los constructores de la API runtime.
 let oc: any = null;

@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Canvas as FabricCanvas, Line as FabricLine } from 'fabric';
+import {
+  Canvas as FabricCanvas,
+  Line as FabricLine,
+  Circle as FabricCircle,
+  Rect as FabricRect,
+  Polygon as FabricPolygon,
+  Path as FabricPath,
+} from 'fabric';
 import { Canvas as ThreeCanvas } from '@react-three/fiber';
 import { OrbitControls as ThreeOrbitControls } from '@react-three/drei';
 import { useSketchStore } from '@/stores/sketchStore';
@@ -25,7 +32,7 @@ import {
   Circle as CircleEntity,
   Line as LineEntity,
   Arc as ArcEntity,
-} from '@stl-model/shared-types';
+} from '@capycad/shared-types';
 import { ZoomIn, ZoomOut, Maximize2, Box, X } from 'lucide-react';
 import { useMemo } from 'react';
 import ConstraintOverlay from './ConstraintOverlay';
@@ -769,15 +776,103 @@ function PolygonProps({ entity, onUpdate }: { entity: PolygonEntity; onUpdate: (
 // ---------------------------------------------------------------------------
 
 function syncFabricObjects(canvas: FabricCanvas, entities: SketchEntity[]) {
-  // Eliminar objetos Fabric cuya entityId ya no esté en el store
-  const existingIds = new Set(entities.map((e) => e.id));
+  // Mapa de entityId → objeto Fabric existente
+  const existingMap = new Map<string, any>();
   canvas.getObjects().forEach((obj: any) => {
-    if (obj.data?.entityId && !existingIds.has(obj.data.entityId)) {
-      canvas.remove(obj);
-    }
+    if (obj.data?.entityId) existingMap.set(obj.data.entityId, obj);
   });
-  // Nota: re-dibujo completo de entidades modificadas no es necesario en este MVP;
-  // los cambios numéricos se reflejan vía undo/redo que regenera la vista completa.
+
+  const storeIds = new Set(entities.map((e) => e.id));
+
+  // 1. Eliminar objetos Fabric que ya no están en el store
+  existingMap.forEach((obj, id) => {
+    if (!storeIds.has(id)) canvas.remove(obj);
+  });
+
+  // 2. Crear objetos Fabric para entidades nuevas del store que no están en el canvas
+  const commonProps = {
+    stroke: '#ffffff',
+    strokeWidth: 2,
+    fill: 'transparent' as const,
+    selectable: true,
+    hasControls: false,
+    hasBorders: false,
+  };
+
+  for (const entity of entities) {
+    if (existingMap.has(entity.id)) continue;
+
+    switch (entity.type) {
+      case SketchEntityType.LINE: {
+        const l = entity as LineEntity;
+        const obj = new FabricLine([l.start.x, l.start.y, l.end.x, l.end.y], {
+          ...commonProps,
+          data: { entityId: l.id },
+        });
+        canvas.add(obj);
+        break;
+      }
+      case SketchEntityType.CIRCLE: {
+        const c = entity as CircleEntity;
+        const obj = new FabricCircle({
+          ...commonProps,
+          left: c.center.x,
+          top: c.center.y,
+          radius: c.radius,
+          originX: 'center',
+          originY: 'center',
+          data: { entityId: c.id },
+        });
+        canvas.add(obj);
+        break;
+      }
+      case SketchEntityType.RECTANGLE: {
+        const r = entity as RectangleEntity;
+        const obj = new FabricRect({
+          ...commonProps,
+          left: r.topLeft.x,
+          top: r.topLeft.y,
+          width: Math.abs(r.bottomRight.x - r.topLeft.x),
+          height: Math.abs(r.bottomRight.y - r.topLeft.y),
+          data: { entityId: r.id },
+        });
+        canvas.add(obj);
+        break;
+      }
+      case SketchEntityType.POLYGON: {
+        const p = entity as PolygonEntity;
+        const rot = p.rotation ?? 0;
+        const pts: { x: number; y: number }[] = [];
+        for (let i = 0; i < p.sides; i++) {
+          const angle = rot + (i / p.sides) * Math.PI * 2 - Math.PI / 2;
+          pts.push({
+            x: p.center.x + Math.cos(angle) * p.radius,
+            y: p.center.y + Math.sin(angle) * p.radius,
+          });
+        }
+        const obj = new FabricPolygon(pts, { ...commonProps });
+        (obj as any).data = { entityId: p.id };
+        canvas.add(obj);
+        break;
+      }
+      case SketchEntityType.ARC: {
+        const a = entity as ArcEntity;
+        const startRad = (a.startAngle * Math.PI) / 180;
+        const endRad = (a.endAngle * Math.PI) / 180;
+        const x1 = a.center.x + a.radius * Math.cos(startRad);
+        const y1 = a.center.y + a.radius * Math.sin(startRad);
+        const x2 = a.center.x + a.radius * Math.cos(endRad);
+        const y2 = a.center.y + a.radius * Math.sin(endRad);
+        const span = ((endRad - startRad) + Math.PI * 2) % (Math.PI * 2);
+        const largeArc = span > Math.PI ? 1 : 0;
+        const pathData = `M ${x1} ${y1} A ${a.radius} ${a.radius} 0 ${largeArc} 1 ${x2} ${y2}`;
+        const obj = new FabricPath(pathData, { ...commonProps, data: { entityId: a.id } });
+        canvas.add(obj);
+        break;
+      }
+    }
+  }
+
   canvas.renderAll();
 }
 

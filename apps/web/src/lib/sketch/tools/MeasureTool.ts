@@ -1,4 +1,4 @@
-import { Vector2, SketchEntity } from '@stl-model/shared-types';
+import { Vector2, SketchEntity } from '@capycad/shared-types';
 import { Line as FabricLine, FabricText } from 'fabric';
 import { BaseTool } from './BaseTool';
 

@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { LineTool } from '@/lib/sketch/tools/LineTool';
-import type { Line } from '@stl-model/shared-types';
+import type { Line } from '@capycad/shared-types';
 
 // Mock completo de fabric — los objetos son instancias virtuales sin DOM
 vi.mock('fabric', () => ({

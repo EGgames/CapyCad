@@ -1,5 +1,5 @@
 {
-  "extends": "@stl-model/tsconfig/base.json",
+  "extends": "@capycad/tsconfig/base.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src"

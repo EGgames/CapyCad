@@ -1,7 +1,7 @@
 import { useFeatureStore } from '@/stores/featureStore';
 import { useUIStore } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
-import { FeatureType } from '@stl-model/shared-types';
+import { FeatureType } from '@capycad/shared-types';
 import { usePanelOrientation } from '../ui/panelOrientation';
 
 const OPERATIONS = [

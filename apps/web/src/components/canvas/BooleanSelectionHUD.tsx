@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useFeatureStore } from '@/stores/featureStore';
-import { FeatureType } from '@stl-model/shared-types';
+import { FeatureType } from '@capycad/shared-types';
 
 const SOLID_TYPES = [
   FeatureType.EXTRUDE,

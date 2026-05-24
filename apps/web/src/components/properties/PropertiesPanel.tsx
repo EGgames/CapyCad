@@ -11,8 +11,8 @@ import {
   FeatureType,
   SketchEntityType,
   ConstraintType,
-} from '@stl-model/shared-types';
-import type { SketchEntity, Constraint } from '@stl-model/shared-types';
+} from '@capycad/shared-types';
+import type { SketchEntity, Constraint } from '@capycad/shared-types';
 import { MATERIAL_PRESET_LIST, getMaterialPreset } from '@/lib/materials/materialPresets';
 import type { FeatureMaterial } from '@/lib/materials/materialPresets';
 import { BooleanOperationSelector } from '../toolbar/Tool3DDialogs';
@@ -572,7 +572,7 @@ function ConstraintPanel({
 // ─── MeasurementList ──────────────────────────────────────────────────────────
 
 interface MeasurementListProps {
-  measurements: import('@stl-model/shared-types').Measurement[];
+  measurements: import('@capycad/shared-types').Measurement[];
   onRemove: (id: string) => void;
 }
 

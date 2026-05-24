@@ -1,5 +1,5 @@
 {
-  "name": "stl-model",
+  "name": "capycad",
   "version": "0.1.0",
   "private": true,
   "description": "CAD Web Application - Todo-en-uno para diseño y modelado 3D",
@@ -7,7 +7,9 @@
   "license": "MIT",
   "scripts": {
     "dev": "turbo run dev",
+    "dev:desktop": "concurrently -k -n vite,electron -c cyan,yellow \"turbo run dev --filter=@capycad/web\" \"pnpm --filter @capycad/desktop dev\"",
     "build": "turbo run build",
+    "build:desktop": "turbo run build --filter=@capycad/web && pnpm --filter @capycad/desktop build:all",
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
     "lint": "turbo run lint",
@@ -16,6 +18,7 @@
   },
   "devDependencies": {
     "@turbo/gen": "^1.13.2",
+    "concurrently": "^8.2.2",
     "prettier": "^3.2.5",
     "turbo": "^1.13.2"
   },

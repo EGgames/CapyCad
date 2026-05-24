@@ -10,7 +10,7 @@ import {
   SweepDialog,
   LoftDialog,
 } from './Tool3DDialogs';
-import { FeatureType, type SketchEntity, type ExtrudeFeature } from '@stl-model/shared-types';
+import { FeatureType, type SketchEntity, type ExtrudeFeature } from '@capycad/shared-types';
 
 type ExtrudeAction = 'extrude' | 'revolve' | 'sweep' | 'loft';
 

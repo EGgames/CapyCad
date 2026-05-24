@@ -3,8 +3,8 @@
  * US-009: Restricciones paramétricas
  */
 import { describe, it, expect } from 'vitest';
-import { SketchEntityType, ConstraintType } from '@stl-model/shared-types';
-import type { Line, Circle, Arc, SketchEntity } from '@stl-model/shared-types';
+import { SketchEntityType, ConstraintType } from '@capycad/shared-types';
+import type { Line, Circle, Arc, SketchEntity } from '@capycad/shared-types';
 import { solveConstraints, createConstraint, validateConstraint } from '../constraintSolver';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

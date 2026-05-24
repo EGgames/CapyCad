@@ -19,8 +19,8 @@
  */
 
 import { nanoid } from 'nanoid';
-import type { Sketch, SketchEntity } from '@stl-model/shared-types';
-import type { Feature } from '@stl-model/shared-types';
+import type { Sketch, SketchEntity } from '@capycad/shared-types';
+import type { Feature } from '@capycad/shared-types';
 
 // ─── Versión del formato ──────────────────────────────────────────────────────
 

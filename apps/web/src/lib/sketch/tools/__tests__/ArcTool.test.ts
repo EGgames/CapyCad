@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ArcTool } from '@/lib/sketch/tools/ArcTool';
-import type { Arc } from '@stl-model/shared-types';
+import type { Arc } from '@capycad/shared-types';
 
 vi.mock('fabric', () => ({
   Circle: vi.fn().mockImplementation(() => ({ set: vi.fn() })),

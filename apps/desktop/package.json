@@ -1,0 +1,54 @@
+{
+  "name": "@capycad/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CAD Studio — Electron desktop wrapper",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron src/main.js",
+    "build": "electron-builder --config",
+    "build:all": "pnpm --filter @capycad/web build && electron-builder"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^30.0.3",
+    "electron-builder": "^24.13.3",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.stlmodel.cadstudio",
+    "productName": "CAD Studio",
+    "copyright": "Copyright © 2026 Emiliano Galmarini",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "renderer",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.graphics-design",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}

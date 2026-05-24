@@ -5,7 +5,7 @@
  * en un Web Worker sin bloquear la UI principal.
  */
 
-import type { SketchEntity, AppliedModifier } from '@stl-model/shared-types';
+import type { SketchEntity, AppliedModifier } from '@capycad/shared-types';
 import { nanoid } from 'nanoid';
 
 export interface EdgeSegmentData {

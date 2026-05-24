@@ -5,6 +5,9 @@ import path from 'path';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // base './' genera rutas relativas en el HTML del build, necesario para
+  // funcionar con el protocolo file:// de Electron (producción offline).
+  base: './',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

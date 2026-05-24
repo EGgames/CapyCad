@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSketchStore } from '@/stores/sketchStore';
-import { Line, Circle, SketchEntityType } from '@stl-model/shared-types';
+import { Line, Circle, SketchEntityType } from '@capycad/shared-types';
 
 describe('sketchStore', () => {
   beforeEach(() => {

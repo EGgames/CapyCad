@@ -10,7 +10,7 @@
 
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
-import { FeatureType } from '@stl-model/shared-types';
+import { FeatureType } from '@capycad/shared-types';
 import type { DisplayUnit } from '@/lib/cad/unitConversion';
 import { useSketchStore } from './sketchStore';
 import type {
@@ -36,7 +36,7 @@ import type {
   CylinderFeature,
   ConeFeature,
   TorusFeature,
-} from '@stl-model/shared-types';
+} from '@capycad/shared-types';
 import type { BufferGeometry } from 'three';
 import type { FeatureMaterial } from '@/lib/materials/materialPresets';
 import type { BooleanShapeDescriptor } from '@/lib/cad/cadWorkerClient';

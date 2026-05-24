@@ -1,5 +1,5 @@
 {
-  "name": "@stl-model/e2e",
+  "name": "@capycad/e2e",
   "version": "0.1.0",
   "private": true,
   "description": "E2E tests — Serenity BDD + Cucumber + WebdriverIO Firefox",

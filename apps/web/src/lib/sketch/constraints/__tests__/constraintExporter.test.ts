@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { exportConstraintsToCSV, downloadCSV } from '../constraintExporter';
-import { ConstraintType, SketchEntityType } from '@stl-model/shared-types';
-import type { Constraint, SketchEntity } from '@stl-model/shared-types';
+import { ConstraintType, SketchEntityType } from '@capycad/shared-types';
+import type { Constraint, SketchEntity } from '@capycad/shared-types';
 
 function makeEntity(id: string, type: SketchEntityType): SketchEntity {
   return { id, type, data: {} } as unknown as SketchEntity;
