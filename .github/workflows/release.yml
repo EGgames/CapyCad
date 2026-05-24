@@ -1,0 +1,195 @@
+name: Release Pipeline
+
+on:
+  push:
+    branches: [test, main]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_release:
+        description: "Forzar build multiplataforma aunque no haya tag"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# ─────────────────────────────────────────────────────────────
+# PIPELINE COMPLETO:
+#   push test  → validate + abre PR automático test→main
+#   PR a main  → validate (check antes del merge)
+#   merge main → validate + build 3 plataformas + GitHub Release
+#   tag v*     → validate + build 3 plataformas + GitHub Release
+# ─────────────────────────────────────────────────────────────
+
+jobs:
+
+  # ─────────────────────────────────────────
+  # 1. ABRIR PR AUTOMÁTICO test → main
+  # ─────────────────────────────────────────
+  open-pr:
+    name: Abrir PR → main
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/test'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Crear PR si no existe
+        run: |
+          EXISTING=$(gh pr list --base main --head test --state open --json number --jq '.[0].number')
+          if [ -z "$EXISTING" ]; then
+            gh pr create \
+              --base main \
+              --head test \
+              --title "release: test → main" \
+              --body "## Pull Request automático
+
+Este PR fue creado automáticamente al actualizar la rama \`test\`.
+
+### Checklist antes de hacer merge
+- [ ] El build de validación pasó
+- [ ] Se revisaron los cambios
+- [ ] Se actualizó la versión en \`package.json\` si corresponde
+
+> Haciendo merge de este PR se dispara el build multiplataforma y se crea una nueva release." \
+              --repo "${{ github.repository }}"
+            echo "✅ PR creado."
+          else
+            echo "ℹ️ Ya existe PR #$EXISTING, no se crea uno nuevo."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────
+  # 2. VALIDAR (type-check + build web)
+  # ─────────────────────────────────────────
+  validate:
+    name: Validar build
+    runs-on: ubuntu-latest
+    # Corre en: PR a main, push a main, push a test, tags, manual
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm --filter @capycad/web exec tsc --noEmit
+
+      - name: Build web
+        run: pnpm --filter @capycad/web build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+  # ─────────────────────────────────────────
+  # 3. BUILD MULTIPLATAFORMA
+  # Corre cuando: merge a main, tag v*, o manual
+  # ─────────────────────────────────────────
+  build:
+    name: Build · ${{ matrix.platform }}
+    needs: validate
+    runs-on: ${{ matrix.os }}
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.build_release == true)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+          - os: macos-latest
+            platform: mac
+          - os: ubuntu-latest
+            platform: linux
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web renderer
+        run: pnpm --filter @capycad/web build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Empaquetar Electron (${{ matrix.platform }})
+        run: pnpm --filter @capycad/desktop build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Subir instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: capycad-${{ matrix.platform }}-${{ github.ref_name }}
+          path: apps/desktop/release/**/*
+          if-no-files-found: error
+          retention-days: 60
+
+  # ─────────────────────────────────────────
+  # 4. CREAR GITHUB RELEASE
+  # ─────────────────────────────────────────
+  release:
+    name: Crear Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descargar todos los artefactos
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Resolver nombre de versión
+        id: ver
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+            echo "is_draft=false" >> "$GITHUB_OUTPUT"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "is_draft=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publicar GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "CapyCad ${{ steps.ver.outputs.tag }}"
+          tag_name: ${{ steps.ver.outputs.tag }}
+          draft: ${{ steps.ver.outputs.is_draft }}
+          prerelease: ${{ contains(steps.ver.outputs.tag, '-') }}
+          files: artifacts/**/*
+          generate_release_notes: true
+          make_latest: true
