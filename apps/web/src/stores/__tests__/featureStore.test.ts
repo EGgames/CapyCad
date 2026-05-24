@@ -19,7 +19,7 @@ import {
   BooleanFeature,
   SketchEntityType,
   type Line,
-} from '@stl-model/shared-types';
+} from '@capycad/shared-types';
 import { BufferGeometry } from 'three';
 
 const mockGeometryData = {
@@ -935,7 +935,7 @@ describe('featureStore', () => {
             sketch: defaultSketch,
             distance: 20,
             direction: 'positive' as const,
-          },
+          } as ExtrudeFeature,
         ],
         geometries: new Map(),
         selectedFeatureId: null,
@@ -987,7 +987,7 @@ describe('featureStore', () => {
             sketch: defaultSketch,
             distance: 20,
             direction: 'positive' as const,
-          },
+          } as ExtrudeFeature,
         ],
         geometries: new Map(),
         selectedFeatureId: null,

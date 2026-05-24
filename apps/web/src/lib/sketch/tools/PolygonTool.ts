@@ -1,4 +1,4 @@
-import { Vector2, Polygon, SketchEntityType } from '@stl-model/shared-types';
+import { Vector2, Polygon, SketchEntityType } from '@capycad/shared-types';
 import { Polygon as FabricPolygon } from 'fabric';
 import { nanoid } from 'nanoid';
 import { distance } from '../geometry';

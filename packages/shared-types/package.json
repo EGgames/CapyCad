@@ -1,5 +1,5 @@
 {
-  "name": "@stl-model/shared-types",
+  "name": "@capycad/shared-types",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",
@@ -9,8 +9,8 @@
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@stl-model/eslint-config": "workspace:*",
-    "@stl-model/tsconfig": "workspace:*",
+    "@capycad/eslint-config": "workspace:*",
+    "@capycad/tsconfig": "workspace:*",
     "typescript": "^5.4.5"
   }
 }

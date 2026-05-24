@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { Canvas as FabricCanvas, Line as FabricLine } from 'fabric';
 import { Canvas as ThreeCanvas } from '@react-three/fiber';
 import { OrbitControls as ThreeOrbitControls } from '@react-three/drei';
@@ -27,7 +27,7 @@ import {
   Line as LineEntity,
   Arc as ArcEntity,
   Ellipse as EllipseEntity,
-} from '@stl-model/shared-types';
+} from '@capycad/shared-types';
 import { ZoomIn, ZoomOut, Maximize2, Box, X } from 'lucide-react';
 import { useMemo } from 'react';
 import ConstraintOverlay from './ConstraintOverlay';
@@ -45,7 +45,7 @@ export default function SketchEditor() {
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   /** Transform del viewport de Fabric para dibujar los ejes ghost */
   const [vt, setVt] = useState<number[]>([1, 0, 0, 1, 0, 0]);
-  /** Posición del mouse en coordenadas del canvas (para cursor) */
+  /** Posici├│n del mouse en coordenadas del canvas (para cursor) */
   const [mousePos, setMousePos] = useState<Vector2 | null>(null);
 
   const {
@@ -68,7 +68,7 @@ export default function SketchEditor() {
     clearSelection,
   } = useSketchStore();
 
-  // Toggle global de la herramienta Selección. Si está OFF, no permitir clicks 2D.
+  // Toggle global de la herramienta Selecci├│n. Si est├í OFF, no permitir clicks 2D.
   const selectionToolActive = useUIStore((s) => s.selectionToolActive);
 
   // Inicializar canvas de Fabric.js
@@ -114,7 +114,7 @@ export default function SketchEditor() {
     };
   }, []);
 
-  // Habilitar/deshabilitar selección Fabric según herramienta y toggle global
+  // Habilitar/deshabilitar selecci├│n Fabric seg├║n herramienta y toggle global
   useEffect(() => {
     if (!fabricCanvasRef.current) return;
     const isSelect = activeTool === 'select' && selectionToolActive;
@@ -133,7 +133,7 @@ export default function SketchEditor() {
     fabricCanvasRef.current.renderAll();
   }, [activeTool, selectionToolActive, clearSelection]);
 
-  // Registrar evento de selección en Fabric — sincroniza con sketchStore
+  // Registrar evento de selecci├│n en Fabric ÔÇö sincroniza con sketchStore
   useEffect(() => {
     if (!fabricCanvasRef.current) return;
     const canvas = fabricCanvasRef.current;
@@ -145,10 +145,10 @@ export default function SketchEditor() {
         .filter((id: string | undefined): id is string => !!id);
       const firstId = entityIds[0] ?? null;
       setSelectedEntityId(firstId);
-      // Sincronizar con sketchStore: reemplaza la selección con la actual de Fabric.
+      // Sincronizar con sketchStore: reemplaza la selecci├│n con la actual de Fabric.
       clearSelection();
       entityIds.forEach((id, idx) => selectEntity(id, idx > 0));
-      // Limpiar selección 3D cuando hay selección 2D activa.
+      // Limpiar selecci├│n 3D cuando hay selecci├│n 2D activa.
       if (entityIds.length > 0) {
         useFeatureStore.getState().selectFeature(null);
       }
@@ -217,13 +217,13 @@ export default function SketchEditor() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleMouseDown = (e: any) => {
     if (!fabricCanvasRef.current) return;
-    // Paneo solo con botón central (scroll wheel click)
+    // Paneo solo con bot├│n central (scroll wheel click)
     if ((e.e as MouseEvent)?.button === 1) {
       setIsPanning(true);
       setLastPanPoint(e.viewportPoint ?? e.pointer);
       return;
     }
-    // En modo selección, Fabric maneja los eventos; no interceptar
+    // En modo selecci├│n, Fabric maneja los eventos; no interceptar
     if (activeTool === 'select') return;
     let canvasPoint: Vector2 = e.scenePoint ?? e.absolutePointer ?? e.pointer;
     if (snapOptions.enabled && snapOptions.snapToGrid) {
@@ -249,7 +249,7 @@ export default function SketchEditor() {
       canvasPoint = snapToGrid(canvasPoint, snapOptions.gridSize);
     }
     if (currentToolRef.current) currentToolRef.current.onMouseMove(canvasPoint);
-    // Actualizar posición del cursor para coordenadas
+    // Actualizar posici├│n del cursor para coordenadas
     setMousePos(canvasPoint);
   };
 
@@ -318,7 +318,7 @@ export default function SketchEditor() {
         currentToolRef.current.cancel();
         return;
       }
-      // Shortcuts de herramientas (solo si el foco no está en un input)
+      // Shortcuts de herramientas (solo si el foco no est├í en un input)
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       switch (e.key.toLowerCase()) {
@@ -407,7 +407,7 @@ export default function SketchEditor() {
     <div ref={containerRef} className="relative h-full w-full">
       <canvas ref={canvasRef} />
 
-      {/* Ghost ejes X/Y — SVG overlay que sigue el viewport de Fabric */}
+      {/* Ghost ejes X/Y ÔÇö SVG overlay que sigue el viewport de Fabric */}
       <AxisGhost vt={vt} canvasRef={canvasRef} />
 
       {/* Indicadores visuales de restricciones */}
@@ -423,7 +423,7 @@ export default function SketchEditor() {
       {/* Coordenadas del cursor */}
       {mousePos && (
         <div className="pointer-events-none absolute left-14 bottom-4 rounded bg-card/80 px-2 py-1 font-mono text-[11px] text-muted-foreground shadow">
-          X {mousePos.x.toFixed(1)} Y {mousePos.y.toFixed(1)}
+          XÔÇ»{mousePos.x.toFixed(1)}ÔÇéYÔÇ»{mousePos.y.toFixed(1)}
         </div>
       )}
 
@@ -439,7 +439,7 @@ export default function SketchEditor() {
       {/* Preview 3D en esquina inferior izquierda */}
       <Feature3DPreview />
 
-      {/* Controles de visualización */}
+      {/* Controles de visualizaci├│n */}
       <div className="absolute bottom-4 right-4 flex flex-col space-y-2">
         <button
           onClick={handleZoomIn}
@@ -470,12 +470,12 @@ export default function SketchEditor() {
 
       {activeTool !== 'select' && (
         <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-md bg-card px-4 py-2 text-sm shadow-md">
-          {activeTool === 'line' && 'Click: inicio → fin'}
-          {activeTool === 'circle' && 'Click centro → arrastra radio'}
-          {activeTool === 'rectangle' && 'Click esquina → arrastra opuesta'}
-          {activeTool === 'polygon' && 'Click centro → arrastra radio'}
-          {activeTool === 'arc' && '1° click: centro · 2°: inicio arco · 3°: fin arco'}
-          {activeTool === 'measure' && '1° click: punto A · 2° click: punto B'}
+          {activeTool === 'line' && 'Click: inicio ÔåÆ fin'}
+          {activeTool === 'circle' && 'Click centro ÔåÆ arrastra radio'}
+          {activeTool === 'rectangle' && 'Click esquina ÔåÆ arrastra opuesta'}
+          {activeTool === 'polygon' && 'Click centro ÔåÆ arrastra radio'}
+          {activeTool === 'arc' && '1┬░ click: centro ┬À 2┬░: inicio arco ┬À 3┬░: fin arco'}
+          {activeTool === 'measure' && '1┬░ click: punto A ┬À 2┬░ click: punto B'}
         </div>
       )}
     </div>
@@ -522,15 +522,15 @@ function EntityPropertiesPanel({ entity, onUpdate, fabricCanvas }: EntityPropsPa
           <p className="truncate font-mono text-[10px] text-muted-foreground">{entity.id}</p>
         </div>
 
-        {/* Rotación — disponible para todas las entidades */}
+        {/* Rotaci├│n ÔÇö disponible para todas las entidades */}
         <NumField
-          label="Rotación (°)"
+          label="Rotaci├│n (┬░)"
           value={entity.rotation ?? 0}
           step={1}
           onChange={handleRotationChange}
         />
 
-        {/* Propiedades específicas por tipo */}
+        {/* Propiedades espec├¡ficas por tipo */}
         {entity.type === SketchEntityType.LINE && (
           <LineProps entity={entity as LineEntity} onUpdate={onUpdate} />
         )}
@@ -554,11 +554,11 @@ function EntityPropertiesPanel({ entity, onUpdate, fabricCanvas }: EntityPropsPa
 
 function labelForType(type: SketchEntityType) {
   const labels: Record<SketchEntityType, string> = {
-    [SketchEntityType.LINE]: 'Línea',
-    [SketchEntityType.CIRCLE]: 'Círculo',
+    [SketchEntityType.LINE]: 'L├¡nea',
+    [SketchEntityType.CIRCLE]: 'C├¡rculo',
     [SketchEntityType.ARC]: 'Arco',
-    [SketchEntityType.RECTANGLE]: 'Rectángulo',
-    [SketchEntityType.POLYGON]: 'Polígono',
+    [SketchEntityType.RECTANGLE]: 'Rect├íngulo',
+    [SketchEntityType.POLYGON]: 'Pol├¡gono',
     [SketchEntityType.SPLINE]: 'Spline',
     [SketchEntityType.ELLIPSE]: 'Elipse',
   };
@@ -665,9 +665,9 @@ function ArcProps({ entity }: { entity: ArcEntity }) {
           <p>{entity.radius.toFixed(1)}</p>
         </div>
         <div>
-          <p className="text-[10px] text-muted-foreground">Ángulo</p>
+          <p className="text-[10px] text-muted-foreground">├üngulo</p>
           <p>
-            {deg(entity.startAngle)}° → {deg(entity.endAngle)}°
+            {deg(entity.startAngle)}┬░ ÔåÆ {deg(entity.endAngle)}┬░
           </p>
         </div>
       </div>
@@ -766,7 +766,7 @@ function PolygonProps({ entity, onUpdate }: { entity: PolygonEntity; onUpdate: (
         onChange={(v) => onUpdate({ sides: Math.max(3, Math.round(v)) })}
       />
       <NumField
-        label="Rotación (°)"
+        label="Rotaci├│n (┬░)"
         value={((entity.rotation ?? 0) * 180) / Math.PI}
         step={1}
         onChange={(v) => onUpdate({ rotation: (v * Math.PI) / 180 })}
@@ -776,8 +776,8 @@ function PolygonProps({ entity, onUpdate }: { entity: PolygonEntity; onUpdate: (
 }
 
 // ---------------------------------------------------------------------------
-// Sincronización de objetos Fabric con las entidades del store
-// cuando el usuario edita propiedades numéricas
+// Sincronizaci├│n de objetos Fabric con las entidades del store
+// cuando el usuario edita propiedades num├®ricas
 
 function EllipseProps({ entity, onUpdate }: { entity: EllipseEntity; onUpdate: (u: any) => void }) {
   return (
@@ -812,7 +812,7 @@ function EllipseProps({ entity, onUpdate }: { entity: EllipseEntity; onUpdate: (
 // ---------------------------------------------------------------------------
 
 function syncFabricObjects(canvas: FabricCanvas, entities: SketchEntity[]) {
-  // Eliminar objetos Fabric cuya entityId ya no esté en el store
+  // Eliminar objetos Fabric cuya entityId ya no est├® en el store
   const existingIds = new Set(entities.map((e) => e.id));
   canvas.getObjects().forEach((obj: any) => {
     if (obj.data?.entityId && !existingIds.has(obj.data.entityId)) {
@@ -820,7 +820,7 @@ function syncFabricObjects(canvas: FabricCanvas, entities: SketchEntity[]) {
     }
   });
   // Nota: re-dibujo completo de entidades modificadas no es necesario en este MVP;
-  // los cambios numéricos se reflejan vía undo/redo que regenera la vista completa.
+  // los cambios num├®ricos se reflejan v├¡a undo/redo que regenera la vista completa.
   canvas.renderAll();
 }
 
@@ -916,7 +916,7 @@ function AxisGhost({
       height={H}
       style={{ overflow: 'hidden' }}
     >
-      {/* Eje X — rojo */}
+      {/* Eje X ÔÇö rojo */}
       <line
         x1={0}
         y1={originY}
@@ -927,7 +927,7 @@ function AxisGhost({
         strokeOpacity={0.55}
         strokeDasharray="4 4"
       />
-      {/* Eje Y — verde */}
+      {/* Eje Y ÔÇö verde */}
       <line
         x1={originX}
         y1={0}
@@ -1000,3 +1000,4 @@ function drawGrid(canvas: FabricCanvas, gridSize: number) {
   }
   canvas.renderAll();
 }
+

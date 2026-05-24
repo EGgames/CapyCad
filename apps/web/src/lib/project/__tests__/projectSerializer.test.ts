@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { FeatureType } from '@stl-model/shared-types';
-import type { Sketch, Feature } from '@stl-model/shared-types';
+import { FeatureType } from '@capycad/shared-types';
+import type { Sketch, Feature } from '@capycad/shared-types';
 import {
   serializeProject,
   loadProject,

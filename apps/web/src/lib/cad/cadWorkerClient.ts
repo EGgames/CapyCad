@@ -5,7 +5,7 @@
  * en un Web Worker sin bloquear la UI principal.
  */
 
-import type { SketchEntity, AppliedModifier } from '@stl-model/shared-types';
+import type { SketchEntity, AppliedModifier } from '@capycad/shared-types';
 import { nanoid } from 'nanoid';
 
 export interface EdgeSegmentData {
@@ -515,7 +515,7 @@ export class CADWorkerClient {
     sourceTranslation: { x: number; y: number; z: number },
     radius: number,
     edgeIndices?: number[],
-    sourceModifiers?: AppliedModifier[]
+    _sourceModifiers?: AppliedModifier[]
   ): Promise<GeometryData> {
     if (!this.isInitialized) {
       throw new Error('CAD Worker not initialized. Call initialize() first.');

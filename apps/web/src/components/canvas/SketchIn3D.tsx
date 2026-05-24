@@ -14,7 +14,7 @@ import {
   Arc as ArcEntity,
   Polygon as PolygonEntity,
   SketchEntity,
-} from '@stl-model/shared-types';
+} from '@capycad/shared-types';
 
 /**
  * 1 Three.js unit = PIXELS_PER_UNIT Fabric canvas pixels

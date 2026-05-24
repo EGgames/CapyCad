@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { analyzeDOF } from '../dofAnalyzer';
-import { ConstraintType, SketchEntityType } from '@stl-model/shared-types';
-import type { SketchEntity, Constraint } from '@stl-model/shared-types';
+import { ConstraintType, SketchEntityType } from '@capycad/shared-types';
+import type { SketchEntity, Constraint } from '@capycad/shared-types';
 
 const makeLine = (id: string): SketchEntity =>
   ({

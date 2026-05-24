@@ -1,4 +1,4 @@
-import type { DisplayUnit } from '@stl-model/shared-types';
+import type { DisplayUnit } from '@capycad/shared-types';
 
 export type { DisplayUnit };
 

@@ -27,7 +27,7 @@ import {
   type Rectangle as RectangleEntity,
   type Polygon as PolygonEntity,
   type Arc as ArcEntity,
-} from '@stl-model/shared-types';
+} from '@capycad/shared-types';
 
 const PPU = 50;
 

@@ -19,8 +19,8 @@
  */
 
 import { nanoid } from 'nanoid';
-import { ConstraintType, SketchEntityType } from '@stl-model/shared-types';
-import type { Constraint, SketchEntity, Line, Circle, Arc } from '@stl-model/shared-types';
+import { ConstraintType, SketchEntityType } from '@capycad/shared-types';
+import type { Constraint, SketchEntity, Line, Circle, Arc } from '@capycad/shared-types';
 
 // ─── Utilidades internas ──────────────────────────────────────────────────────
 

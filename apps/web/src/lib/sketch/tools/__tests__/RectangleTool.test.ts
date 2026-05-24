@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RectangleTool } from '@/lib/sketch/tools/RectangleTool';
-import type { Rectangle } from '@stl-model/shared-types';
+import type { Rectangle } from '@capycad/shared-types';
 
 vi.mock('fabric', () => ({
   Line: vi.fn().mockImplementation(() => ({ set: vi.fn() })),

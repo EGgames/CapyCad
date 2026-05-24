@@ -1,5 +1,5 @@
 {
-  "name": "@stl-model/web",
+  "name": "@capycad/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
-    "@stl-model/shared-types": "workspace:*",
+    "@capycad/shared-types": "workspace:*",
     "@react-three/drei": "^9.105.4",
     "@react-three/fiber": "^8.16.2",
     "@radix-ui/react-dialog": "^1.0.5",
@@ -39,8 +39,8 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
-    "@stl-model/eslint-config": "workspace:*",
-    "@stl-model/tsconfig": "workspace:*",
+    "@capycad/eslint-config": "workspace:*",
+    "@capycad/tsconfig": "workspace:*",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^15.0.2",
     "@testing-library/user-event": "^14.5.2",

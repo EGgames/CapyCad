@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Sketch, SketchEntity, ConstraintType, Measurement } from '@stl-model/shared-types';
+import { Sketch, SketchEntity, ConstraintType, Measurement } from '@capycad/shared-types';
 import { nanoid } from 'nanoid';
 import { solveConstraints, createConstraint } from '../lib/sketch/constraints/constraintSolver';
 
@@ -114,7 +114,14 @@ interface SketchState {
  */
 export const useSketchStore = create<SketchState>((set, get) => ({
   // Estado inicial
-  activeSketch: null,
+  activeSketch: {
+    id: nanoid(),
+    name: 'Sketch 1',
+    entities: [],
+    constraints: [],
+    measurements: [],
+    plane: 'XY',
+  },
   activeTool: 'select',
   editMode: '2d',
   selectedEntities: [],
@@ -125,8 +132,8 @@ export const useSketchStore = create<SketchState>((set, get) => ({
     snapToLines: false,
     gridSize: 10,
   },
-  history: [],
-  historyIndex: -1,
+  history: [{ entities: [], timestamp: Date.now() }],
+  historyIndex: 0,
   previewEntity: null,
   canvasWidth: 800,
   canvasHeight: 600,

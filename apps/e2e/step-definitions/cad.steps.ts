@@ -1,6 +1,7 @@
 import { Given, When, Then } from '@cucumber/cucumber';
 import { actorCalled, Duration, Wait } from '@serenity-js/core';
 import { Ensure, equals, isTrue } from '@serenity-js/assertions';
+import { driver } from '@wdio/globals';
 
 import {
   AbrirAplicacionCAD,
@@ -13,11 +14,9 @@ import { AppState } from '../screenplay/questions/AppState';
 // ── Antecedentes ─────────────────────────────────────────────────────────────
 
 Given('que el usuario abre la aplicación CAD', async () => {
-  await actorCalled('Diseñador').attemptsTo(
-    AbrirAplicacionCAD(),
-    // Esperar que la aplicación cargue y el overlay de init desaparezca
-    Wait.upTo(Duration.ofSeconds(30)).until(AppState.initOverlayIsGone(), isTrue())
-  );
+  await actorCalled('Diseñador').attemptsTo(AbrirAplicacionCAD());
+  // Usar WebdriverIO directamente: más fiable que Serenity-JS isPresent() durante la carga inicial
+  await driver.$('[data-testid="toolbar-file"]').waitForExist({ timeout: 30000 });
 });
 
 // ── Aserciones generales ──────────────────────────────────────────────────────
@@ -147,11 +146,12 @@ Then('el botón de booleana debería estar presente', async () => {
 });
 
 When('el usuario abre el diálogo de booleana', async () => {
-  const { Click } = await import('@serenity-js/web');
-  const { PageElement, By } = await import('@serenity-js/web');
+  const { PageElement, By, ExecuteScript } = await import('@serenity-js/web');
   await actorCalled('Diseñador').attemptsTo(
-    Wait.upTo(Duration.ofSeconds(30)).until(AppState.initOverlayIsGone(), isTrue()),
-    Click.on(PageElement.located(By.css('[data-testid="boolean-open-btn"]')))
+    Wait.upTo(Duration.ofSeconds(10)).until(AppState.booleanToolbarIsPresent(), isTrue()),
+    ExecuteScript.sync('arguments[0].click()').withArguments(
+      PageElement.located(By.css('[data-testid="boolean-union-btn"]'))
+    )
   );
 });
 

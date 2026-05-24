@@ -3,7 +3,7 @@ import {
   Constraint,
   ConstraintType,
   SketchEntityType,
-} from '@stl-model/shared-types';
+} from '@capycad/shared-types';
 
 export type ConstraintStatus = 'under-constrained' | 'well-constrained' | 'over-constrained';
 

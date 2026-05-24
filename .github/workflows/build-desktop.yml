@@ -1,0 +1,89 @@
+name: Build Desktop (Electron)
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g. v1.0.0)"
+        required: false
+        default: "dev"
+
+jobs:
+  build:
+    name: Build — ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: release/**/*.exe
+            platform: win
+          - os: macos-latest
+            artifact: release/**/*.dmg
+            platform: mac
+          - os: ubuntu-latest
+            artifact: release/**/*.AppImage
+            platform: linux
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      # Build la web app primero (el renderer de Electron)
+      - name: Build web renderer
+        run: pnpm --filter @capycad/web build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      # Empaqueta el instalador nativo con electron-builder
+      - name: Build Electron installer
+        run: pnpm --filter @capycad/desktop build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: capycad-${{ matrix.platform }}-${{ github.ref_name || inputs.version }}
+          path: apps/desktop/release/**/*
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    # Solo crea release cuando hay un tag vX.Y.Z
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: CapyCad ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: artifacts/**/*
+          generate_release_notes: true

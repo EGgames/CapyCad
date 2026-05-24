@@ -1,4 +1,4 @@
-import { Vector2, Ellipse, SketchEntityType } from '@stl-model/shared-types';
+import { Vector2, Ellipse, SketchEntityType } from '@capycad/shared-types';
 import { Ellipse as FabricEllipse } from 'fabric';
 import { nanoid } from 'nanoid';
 import { BaseTool } from './BaseTool';

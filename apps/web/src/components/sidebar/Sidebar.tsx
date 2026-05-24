@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useSketchStore } from '@/stores/sketchStore';
 import { useFeatureStore } from '@/stores/featureStore';
-import { FeatureType } from '@stl-model/shared-types';
+import { FeatureType } from '@capycad/shared-types';
 
 export default function Sidebar() {
   const { activeSketch, createSketch, setEditMode } = useSketchStore();

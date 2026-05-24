@@ -3,7 +3,7 @@ import {
   ConstraintType,
   SketchEntity,
   SketchEntityType,
-} from '@stl-model/shared-types';
+} from '@capycad/shared-types';
 
 const CONSTRAINT_LABELS: Record<ConstraintType, string> = {
   [ConstraintType.DISTANCE]: 'Distancia',

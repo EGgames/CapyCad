@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BufferGeometry } from 'three';
-import { FeatureType, type ExtrudeFeature, type BoxFeature } from '@stl-model/shared-types';
+import { FeatureType, type ExtrudeFeature, type BoxFeature } from '@capycad/shared-types';
 import { useFeatureStore } from '@/stores/featureStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useToastStore } from '@/lib/toast';
@@ -172,7 +172,7 @@ describe('ToolbarModifiers — integración', () => {
       const extrude = mkExtrude('e1');
       resetStore([extrude], 'e1');
       useFeatureStore.setState({
-        geometries: new Map([['e1', new BufferGeometry()]]),
+        geometries: new Map([['e1', { featureId: 'e1', geometry: new BufferGeometry(), visible: true }]]),
       });
       render(<ToolbarModifiers />);
       const actionTypes = ['fillet', 'chamfer', 'bevel', 'cove', 'shell', 'draft', 'offset'];

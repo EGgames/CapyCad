@@ -4,15 +4,20 @@ import { useSketchStore } from '@/stores/sketchStore';
 import { useFeatureStore } from '@/stores/featureStore';
 import { useUIStore } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
-import { usePanelOrientation, usePanelCompact } from '../ui/panelOrientation';
-import { RevolveDialog, SweepDialog, LoftDialog } from './Tool3DDialogs';
-import { FeatureType, type SketchEntity, type ExtrudeFeature } from '@stl-model/shared-types';
+import { usePanelOrientation } from '../ui/panelOrientation';
+import {
+  RevolveDialog,
+  SweepDialog,
+  LoftDialog,
+} from './Tool3DDialogs';
+import { FeatureType, type ExtrudeFeature } from '@capycad/shared-types';
 
 type ExtrudeAction = 'extrude' | 'revolve' | 'sweep' | 'loft';
 
 export default function ToolbarExtrude() {
   const { activeSketch, setEditMode, selectedEntities } = useSketchStore();
-  const { createExtrude, createRevolve, createSweep, createLoft, isProcessing } = useFeatureStore();
+  const { createRevolve, createSweep, createLoft, isProcessing } =
+    useFeatureStore();
   const selectedFeatureId = useFeatureStore((s) => s.selectedFeatureId);
   const features = useFeatureStore((s) => s.features);
   const setExtrudePreviewActive = useUIStore((s) => s.setExtrudePreviewActive);
@@ -38,45 +43,6 @@ export default function ToolbarExtrude() {
     return true;
   };
 
-  const handleExtrude = async (distance: number, direction: 'positive' | 'negative' | 'both') => {
-    // Caso 1: hay un sketch 2D activo con entidades seleccionadas → las extruimos.
-    if (activeSketch && selectedEntities.length > 0) {
-      const entitiesToExtrude = activeSketch.entities.filter((e) =>
-        selectedEntities.includes(e.id)
-      );
-      if (entitiesToExtrude.length === 0) {
-        alert('Las entidades seleccionadas no son válidas');
-        return;
-      }
-      try {
-        await createExtrude(activeSketch.id, entitiesToExtrude, distance, direction);
-        setEditMode('3d');
-      } catch (error) {
-        console.error('Error al extruir:', error);
-        alert('Error al extruir. Ver consola para detalles.');
-      }
-      return;
-    }
-    // Caso 2: hay una feature 3D seleccionada con sketch base → re-extruimos esa cara.
-    if (selectedExtrudableFeature) {
-      const baseSketch = selectedExtrudableFeature.sketch;
-      const entities: SketchEntity[] = baseSketch.entities;
-      if (entities.length === 0) {
-        alert('La cara seleccionada no tiene un perfil válido para extruir');
-        return;
-      }
-      try {
-        await createExtrude(baseSketch.id, entities, distance, direction);
-        setEditMode('3d');
-      } catch (error) {
-        console.error('Error al extruir desde cara 3D:', error);
-        alert('Error al extruir. Ver consola para detalles.');
-      }
-      return;
-    }
-    alert('Selecciona un sketch 2D o una cara de una figura 3D para extruir');
-  };
-
   const handleRevolve = async (axis: 'X' | 'Y' | 'Z', angle: number) => {
     if (!requireSketch()) return;
     try {
@@ -88,7 +54,9 @@ export default function ToolbarExtrude() {
     }
   };
 
-  const handleSweep = async (pathPoints: Array<{ x: number; y: number; z: number }>) => {
+  const handleSweep = async (
+    pathPoints: Array<{ x: number; y: number; z: number }>
+  ) => {
     if (!requireSketch()) return;
     try {
       await createSweep(activeSketch!.entities, pathPoints);
@@ -141,7 +109,6 @@ export default function ToolbarExtrude() {
 
   const orientation = usePanelOrientation();
   const isVertical = orientation === 'vertical';
-  const isCompact = usePanelCompact();
 
   // Las herramientas generativas que NO sean Extruir requieren un sketch 2D con selección.
   const hasSketch = !!activeSketch && activeSketch.entities.length > 0;
@@ -174,29 +141,27 @@ export default function ToolbarExtrude() {
     <div
       data-testid="toolbar-extrude"
       className={cn(
-        'gap-1 px-2',
-        isVertical ? 'flex flex-col items-stretch py-2' : 'flex items-center overflow-x-auto'
+        'gap-1 px-2 sm:px-4',
+        isVertical
+          ? 'flex flex-col items-stretch py-2'
+          : 'flex items-center overflow-x-auto'
       )}
     >
       <div
         className={cn(
           isVertical
-            ? isCompact
-              ? 'flex flex-col items-center space-y-1'
-              : 'flex flex-col items-stretch space-y-1'
+            ? 'flex flex-col items-stretch space-y-1'
             : 'flex items-center space-x-1'
         )}
       >
-        {!isCompact && (
-          <span
-            className={cn(
-              'text-xs font-medium text-muted-foreground',
-              isVertical ? 'mb-1' : 'mr-2'
-            )}
-          >
-            Extrusión:
-          </span>
-        )}
+        <span
+          className={cn(
+            'text-xs font-medium text-muted-foreground',
+            isVertical ? 'mb-1' : 'mr-2'
+          )}
+        >
+          Extrusión:
+        </span>
         {tools.map((tool) => {
           const disabled = isActionDisabled(tool.action);
           const dimmed = !isProcessing && disabled;
@@ -204,7 +169,7 @@ export default function ToolbarExtrude() {
             <button
               key={tool.action}
               className={cn(
-                isVertical && !isCompact
+                isVertical
                   ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
                   : 'flex h-9 w-9 items-center justify-center rounded-md',
                 isProcessing
@@ -228,7 +193,7 @@ export default function ToolbarExtrude() {
               disabled={disabled}
             >
               <tool.icon className="h-4 w-4" />
-              {isVertical && !isCompact && <span className="text-sm">{tool.label}</span>}
+              {isVertical && <span className="text-sm">{tool.label}</span>}
             </button>
           );
         })}

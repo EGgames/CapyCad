@@ -1,18 +1,10 @@
-import { useRef, useCallback, useState, useEffect, type ReactNode, type MouseEvent } from 'react';
+import { useRef, useCallback, useState, type ReactNode, type MouseEvent } from 'react';
 import { cn } from '@/lib/utils';
 import { GripHorizontal, X, PinOff } from 'lucide-react';
 import type { PanelId, DockSide } from '@/stores/uiStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useDockDragStore } from './dockDragStore';
-import {
-  PanelOrientationContext,
-  PanelCompactContext,
-  type PanelOrientation,
-} from './panelOrientation';
-
-type ResizeDir = 'w' | 'h' | 'both';
-
-const COMPACT_THRESHOLD = 160; // px — below this width, hide text labels
+import { PanelOrientationContext, type PanelOrientation } from './panelOrientation';
 
 interface DraggablePanelProps {
   id: PanelId;
@@ -54,63 +46,6 @@ export default function DraggablePanel({
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
 
-  // Compact mode: true when panel width < COMPACT_THRESHOLD
-  const [compact, setCompact] = useState(false);
-  useEffect(() => {
-    const el = panelRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width ?? el.getBoundingClientRect().width;
-      setCompact(w < COMPACT_THRESHOLD);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  // Resize state (floating panels only)
-  const [panelSize, setPanelSize] = useState<{ w?: number; h?: number }>({});
-  const panelSizeRef = useRef<{ w?: number; h?: number }>({});
-  const resizeDragRef = useRef<{
-    dir: ResizeDir;
-    startX: number;
-    startY: number;
-    startW: number;
-    startH: number;
-  } | null>(null);
-
-  const startResize = useCallback((dir: ResizeDir, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const rect = panelRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    resizeDragRef.current = {
-      dir,
-      startX: e.clientX,
-      startY: e.clientY,
-      startW: rect.width,
-      startH: rect.height,
-    };
-    const onMove = (ev: globalThis.MouseEvent) => {
-      if (!resizeDragRef.current) return;
-      const { dir: d, startX, startY, startW, startH } = resizeDragRef.current;
-      const dx = ev.clientX - startX;
-      const dy = ev.clientY - startY;
-      const next: { w?: number; h?: number } = {
-        w: d !== 'h' ? Math.max(120, startW + dx) : panelSizeRef.current.w,
-        h: d !== 'w' ? Math.max(60, startH + dy) : panelSizeRef.current.h,
-      };
-      panelSizeRef.current = next;
-      setPanelSize(next);
-    };
-    const onUp = () => {
-      resizeDragRef.current = null;
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  }, []);
-
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
       if (e.button !== 0) return;
@@ -148,14 +83,8 @@ export default function DraggablePanel({
           const r = panelRef.current?.getBoundingClientRect();
           const w = r?.width ?? 200;
           const h = r?.height ?? 60;
-          const clampedX = Math.max(
-            0,
-            Math.min(ev.clientX - dragOffset.current.x, window.innerWidth - w)
-          );
-          const clampedY = Math.max(
-            0,
-            Math.min(ev.clientY - dragOffset.current.y, window.innerHeight - h)
-          );
+          const clampedX = Math.max(0, Math.min(ev.clientX - dragOffset.current.x, window.innerWidth - w));
+          const clampedY = Math.max(0, Math.min(ev.clientY - dragOffset.current.y, window.innerHeight - h));
           setPanelDock(id, 'floating', { x: clampedX, y: clampedY });
         }
       };
@@ -174,92 +103,66 @@ export default function DraggablePanel({
 
   return (
     <PanelOrientationContext.Provider value={orientation}>
-      <PanelCompactContext.Provider value={compact}>
-        <div
-          ref={panelRef}
-          className={cn(
-            'flex flex-col rounded-lg border border-border bg-card shadow-xl',
-            isFloating && 'fixed z-30',
-            !isFloating && 'relative',
-            isDragging && 'opacity-90 shadow-2xl ring-2 ring-primary/50',
-            className
-          )}
-          style={
-            isFloating
-              ? {
-                  left: panel.position.x,
-                  top: panel.position.y,
-                  ...(panelSize.w !== undefined && { width: panelSize.w }),
-                  ...(panelSize.h !== undefined
-                    ? { height: panelSize.h }
-                    : { maxHeight: `calc(100vh - ${Math.max(panel.position.y, 0) + 16}px)` }),
-                }
-              : undefined
-          }
-        >
-          {/* Drag handle header — full width */}
-          <div
-            onMouseDown={handleMouseDown}
-            className={cn(
-              'flex h-8 items-center gap-2 rounded-t-lg border-b border-border bg-muted/50 px-2 select-none',
-              isDragging ? 'cursor-grabbing' : 'cursor-grab'
-            )}
+    <div
+      ref={panelRef}
+      className={cn(
+        'flex flex-col rounded-lg border border-border bg-card shadow-xl',
+        isFloating && 'fixed z-30',
+        !isFloating && 'relative',
+        isDragging && 'opacity-90 shadow-2xl ring-2 ring-primary/50',
+        className
+      )}
+      style={
+        isFloating
+          ? {
+              left: panel.position.x,
+              top: panel.position.y,
+              maxHeight: `calc(100vh - ${Math.max(panel.position.y, 0) + 16}px)`,
+            }
+          : undefined
+      }
+    >
+      {/* Drag handle header — full width */}
+      <div
+        onMouseDown={handleMouseDown}
+        className={cn(
+          'flex h-8 items-center gap-2 rounded-t-lg border-b border-border bg-muted/50 px-2 select-none',
+          isDragging ? 'cursor-grabbing' : 'cursor-grab'
+        )}
+      >
+        <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          {title}
+        </span>
+        {headerExtra}
+        {!isFloating && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setPanelDock(id, 'floating', { x: 80, y: 80 });
+            }}
+            className="rounded p-0.5 hover:bg-muted"
+            title="Desanclar"
           >
-            <GripHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {title}
-            </span>
-            {headerExtra}
-            {!isFloating && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPanelDock(id, 'floating', { x: 80, y: 80 });
-                }}
-                className="rounded p-0.5 hover:bg-muted"
-                title="Desanclar"
-              >
-                <PinOff className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            )}
-            {closable && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePanel(id);
-                }}
-                className="rounded p-0.5 hover:bg-muted"
-                title={`Ocultar ${title}`}
-              >
-                <X className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            )}
-          </div>
-          {/* Content */}
-          <div className="overflow-auto flex-1 min-h-0">{children}</div>
-
-          {/* Resize handles — floating panels only */}
-          {isFloating && (
-            <>
-              {/* Right edge */}
-              <div
-                onMouseDown={(e) => startResize('w', e)}
-                className="absolute right-0 top-8 bottom-3 w-1.5 cursor-col-resize z-20 hover:bg-primary/25 active:bg-primary/40 transition-colors"
-              />
-              {/* Bottom edge */}
-              <div
-                onMouseDown={(e) => startResize('h', e)}
-                className="absolute left-3 right-3 bottom-0 h-1.5 cursor-row-resize z-20 hover:bg-primary/25 active:bg-primary/40 transition-colors"
-              />
-              {/* Bottom-right corner */}
-              <div
-                onMouseDown={(e) => startResize('both', e)}
-                className="absolute right-0 bottom-0 w-3 h-3 cursor-nwse-resize z-20 hover:bg-primary/40 active:bg-primary/60 transition-colors rounded-br-lg"
-              />
-            </>
-          )}
-        </div>
-      </PanelCompactContext.Provider>
+            <PinOff className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        )}
+        {closable && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePanel(id);
+            }}
+            className="rounded p-0.5 hover:bg-muted"
+            title={`Ocultar ${title}`}
+          >
+            <X className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        )}
+      </div>
+      {/* Content */}
+      <div className="overflow-auto">{children}</div>
+    </div>
     </PanelOrientationContext.Provider>
   );
 }

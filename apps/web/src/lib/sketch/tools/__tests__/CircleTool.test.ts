@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CircleTool } from '@/lib/sketch/tools/CircleTool';
-import type { Circle } from '@stl-model/shared-types';
+import type { Circle } from '@capycad/shared-types';
 import { distance } from '@/lib/sketch/geometry';
 
 vi.mock('fabric', () => ({

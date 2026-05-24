@@ -19,7 +19,7 @@ import {
   angleDegrees,
   findNearestPoint,
 } from '@/lib/sketch/geometry';
-import { Vector2 } from '@stl-model/shared-types';
+import { Vector2 } from '@capycad/shared-types';
 
 describe('geometry utilities', () => {
   describe('distance', () => {

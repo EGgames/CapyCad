@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import type { SketchEntity, Constraint } from '@stl-model/shared-types';
-import { ConstraintType, SketchEntityType } from '@stl-model/shared-types';
-import type { Line, Circle, Arc, Rectangle, Polygon } from '@stl-model/shared-types';
+import type { SketchEntity, Constraint } from '@capycad/shared-types';
+import { ConstraintType, SketchEntityType } from '@capycad/shared-types';
+import type { Line, Circle, Arc, Rectangle, Polygon } from '@capycad/shared-types';
 
 interface ConstraintOverlayProps {
   constraints: Constraint[];

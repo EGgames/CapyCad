@@ -12,7 +12,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSketchStore } from '@/stores/sketchStore';
-import { Line, SketchEntityType } from '@stl-model/shared-types';
+import { Line, SketchEntityType } from '@capycad/shared-types';
 
 describe('sketchStore — auto-create sketch en addEntity', () => {
   beforeEach(() => {

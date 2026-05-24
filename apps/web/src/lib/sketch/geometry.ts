@@ -1,4 +1,4 @@
-import { Vector2 } from '@stl-model/shared-types';
+import { Vector2 } from '@capycad/shared-types';
 
 /**
  * Calcula la distancia entre dos puntos

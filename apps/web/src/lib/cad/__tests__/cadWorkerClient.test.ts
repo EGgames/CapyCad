@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CADWorkerClient, getCADWorker, terminateCADWorker } from '@/lib/cad/cadWorkerClient';
-import { SketchEntityType } from '@stl-model/shared-types';
+import { SketchEntityType } from '@capycad/shared-types';
 
 // Mock del Worker
 /** Geometría de stub reutilizable */

@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { BufferGeometry } from 'three';
-import { FeatureType, SketchEntityType, type ExtrudeFeature, type BoxFeature, type Line } from '@stl-model/shared-types';
+import { FeatureType, SketchEntityType, type ExtrudeFeature, type BoxFeature, type Line } from '@capycad/shared-types';
 import { useFeatureStore } from '@/stores/featureStore';
 import { useUIStore } from '@/stores/uiStore';
 import ToolbarBoolean from '../ToolbarBoolean';

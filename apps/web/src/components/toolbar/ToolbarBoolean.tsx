@@ -1,8 +1,8 @@
 import { useFeatureStore } from '@/stores/featureStore';
 import { useUIStore } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
-import { FeatureType } from '@stl-model/shared-types';
-import { usePanelOrientation, usePanelCompact } from '../ui/panelOrientation';
+import { FeatureType } from '@capycad/shared-types';
+import { usePanelOrientation } from '../ui/panelOrientation';
 
 const OPERATIONS = [
   {
@@ -10,13 +10,7 @@ const OPERATIONS = [
     label: 'Unión',
     title: 'Unir dos sólidos',
     icon: (
-      <svg
-        className="h-5 w-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      >
+      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <circle cx="9" cy="12" r="5" />
         <circle cx="15" cy="12" r="5" />
         <path d="M12 7.27A5 5 0 0 1 15 12a5 5 0 0 1-3 4.73" strokeOpacity="0" />
@@ -30,13 +24,7 @@ const OPERATIONS = [
     label: 'Resta',
     title: 'Restar un sólido de otro (A − B)',
     icon: (
-      <svg
-        className="h-5 w-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      >
+      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <circle cx="9" cy="12" r="5" />
         <circle cx="15" cy="12" r="5" className="fill-current opacity-25" />
       </svg>
@@ -47,27 +35,14 @@ const OPERATIONS = [
     label: 'Intersección',
     title: 'Mantener solo la zona común (A ∩ B)',
     icon: (
-      <svg
-        className="h-5 w-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      >
+      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <circle cx="9" cy="12" r="5" />
         <circle cx="15" cy="12" r="5" />
         {/* Zona de intersección rellenada */}
         <clipPath id="bool-clip-a">
           <circle cx="9" cy="12" r="5" />
         </clipPath>
-        <circle
-          cx="15"
-          cy="12"
-          r="5"
-          className="fill-current opacity-30"
-          clipPath="url(#bool-clip-a)"
-          stroke="none"
-        />
+        <circle cx="15" cy="12" r="5" className="fill-current opacity-30" clipPath="url(#bool-clip-a)" stroke="none" />
       </svg>
     ),
   },
@@ -78,7 +53,6 @@ export default function ToolbarBoolean() {
   const { startBooleanWizard, booleanWizard } = useUIStore();
   const orientation = usePanelOrientation();
   const isVertical = orientation === 'vertical';
-  const isCompact = usePanelCompact();
 
   const SOLID_TYPES = [
     FeatureType.EXTRUDE,
@@ -96,29 +70,23 @@ export default function ToolbarBoolean() {
     <div
       data-testid="toolbar-boolean"
       className={cn(
-        'gap-1 px-2',
+        'gap-1 px-2 sm:px-4',
         isVertical ? 'flex flex-col items-stretch py-2' : 'flex items-center overflow-x-auto'
       )}
     >
       <div
         className={cn(
-          isVertical
-            ? isCompact
-              ? 'flex flex-col items-center space-y-1'
-              : 'flex flex-col items-stretch space-y-1'
-            : 'flex items-center space-x-1'
+          isVertical ? 'flex flex-col items-stretch space-y-1' : 'flex items-center space-x-1'
         )}
       >
-        {!isCompact && (
-          <span
-            className={cn(
-              'text-xs font-medium text-muted-foreground',
-              isVertical ? 'mb-1' : 'mr-2'
-            )}
-          >
-            Booleana:
-          </span>
-        )}
+        <span
+          className={cn(
+            'text-xs font-medium text-muted-foreground',
+            isVertical ? 'mb-1' : 'mr-2'
+          )}
+        >
+          Booleana:
+        </span>
 
         {OPERATIONS.map((op) => {
           const isActive = booleanWizard?.operation === op.type;
@@ -130,9 +98,8 @@ export default function ToolbarBoolean() {
               disabled={isProcessing}
               onClick={() => startBooleanWizard(op.type)}
               className={cn(
-                isVertical && !isCompact
-                  ? 'flex h-9 w-full items-center gap-2 justify-start rounded-md px-3 transition-colors'
-                  : 'flex h-9 w-9 items-center justify-center rounded-md transition-colors',
+                'flex h-9 items-center gap-2 rounded-md px-3 transition-colors',
+                isVertical && 'justify-start',
                 isActive
                   ? 'bg-primary text-primary-foreground'
                   : canRun
@@ -142,7 +109,7 @@ export default function ToolbarBoolean() {
               )}
             >
               {op.icon}
-              {!isCompact && <span className="text-sm">{op.label}</span>}
+              <span className="text-sm">{op.label}</span>
             </button>
           );
         })}
@@ -150,3 +117,4 @@ export default function ToolbarBoolean() {
     </div>
   );
 }
+

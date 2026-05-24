@@ -13,7 +13,7 @@ import { useEffect, useRef } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useFeatureStore } from '@/stores/featureStore';
 import { useSketchStore } from '@/stores/sketchStore';
-import { FeatureType, type ExtrudeFeature } from '@stl-model/shared-types';
+import { FeatureType, type ExtrudeFeature } from '@capycad/shared-types';
 import { cn } from '@/lib/utils';
 
 type Direction = 'positive' | 'negative' | 'both';

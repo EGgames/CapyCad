@@ -2,6 +2,21 @@
 
 import { useEffect } from 'react';
 import { useUIStore } from '@/stores/uiStore';
+import { useFeatureStore } from '@/stores/featureStore';
+import { FeatureType } from '@capycad/shared-types';
+
+const SOLID_TYPES = [
+  FeatureType.EXTRUDE,
+  FeatureType.REVOLVE,
+  FeatureType.SWEEP,
+  FeatureType.LOFT,
+  FeatureType.PRIMITIVE_BOX,
+  FeatureType.PRIMITIVE_SPHERE,
+  FeatureType.PRIMITIVE_CYLINDER,
+  FeatureType.PRIMITIVE_CONE,
+  FeatureType.PRIMITIVE_TORUS,
+  FeatureType.BOOLEAN,
+] as const;
 
 const OP_LABELS: Record<string, string> = {
   union: 'Unión',
@@ -37,6 +52,10 @@ const OP_ICONS: Record<string, React.ReactNode> = {
 export default function BooleanSelectionHUD() {
   const booleanWizard = useUIStore((s) => s.booleanWizard);
   const cancelBooleanWizard = useUIStore((s) => s.cancelBooleanWizard);
+  const features = useFeatureStore((s) => s.features);
+  const solidFeatures = features.filter((f) =>
+    (SOLID_TYPES as readonly string[]).includes(f.type)
+  );
 
   // Cerrar con ESC
   useEffect(() => {
@@ -56,6 +75,17 @@ export default function BooleanSelectionHUD() {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center">
+      {/* Mensaje cuando no hay sólidos disponibles */}
+      {solidFeatures.length < 2 && (
+        <p
+          data-testid="boolean-empty-msg"
+          className="pointer-events-auto mt-4 rounded border border-yellow-500/40 bg-yellow-950/90 px-4 py-3 text-sm text-yellow-300 shadow-xl"
+        >
+          {solidFeatures.length === 0
+            ? 'No hay extrusiones disponibles. Crea al menos dos extrusiones (Extrude) para aplicar una operación booleana.'
+            : 'Solo hay una extrusión. Necesitas al menos dos extrusiones para una operación booleana.'}
+        </p>
+      )}
       {/* Banner superior — instrucción actual */}
       <div className="pointer-events-auto mt-4 flex items-center gap-3 rounded-xl border border-border bg-card/90 px-5 py-3 shadow-xl backdrop-blur-sm">
         {/* Icono de operación */}
