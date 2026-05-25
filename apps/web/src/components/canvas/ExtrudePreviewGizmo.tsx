@@ -24,6 +24,7 @@ import {
   SketchEntityType,
   type SketchEntity,
   type Circle as CircleEntity,
+  type Line as LineEntity,
   type Rectangle as RectangleEntity,
   type Polygon as PolygonEntity,
   type Arc as ArcEntity,
@@ -43,11 +44,7 @@ const PPU = 50;
  *   (x, sy, 0)  → (x, 0, -sy)  = (worldX, 0, worldZ)  ✓
  *   (x, sy, d)  → (x, d, -sy)  = (worldX, d, worldZ)  ✓ (extrusión en +Y)
  */
-function entitiesToShape(
-  entities: SketchEntity[],
-  cw: number,
-  ch: number
-): THREE.Shape | null {
+function entitiesToShape(entities: SketchEntity[], cw: number, ch: number): THREE.Shape | null {
   for (const e of entities) {
     if (e.type === SketchEntityType.CIRCLE) {
       const c = e as CircleEntity;
@@ -103,15 +100,46 @@ function entitiesToShape(
       return shape;
     }
   }
+
+  // Fallback: construir contorno desde segmentos LINE conectados
+  const lines = entities.filter((e) => e.type === SketchEntityType.LINE) as LineEntity[];
+  if (lines.length >= 2) {
+    const EPS = 2; // tolerancia en píxeles para considerar puntos como coincidentes
+    const ordered: LineEntity[] = [];
+    const remaining = [...lines];
+    ordered.push(remaining.splice(0, 1)[0]);
+    while (remaining.length > 0) {
+      const last = ordered[ordered.length - 1];
+      const idx = remaining.findIndex(
+        (l) =>
+          Math.hypot(l.start.x - last.end.x, l.start.y - last.end.y) < EPS ||
+          Math.hypot(l.end.x - last.end.x, l.end.y - last.end.y) < EPS
+      );
+      if (idx === -1) break;
+      const next = remaining.splice(idx, 1)[0];
+      // Si el segmento conecta por su extremo final, invertirlo
+      if (Math.hypot(next.end.x - last.end.x, next.end.y - last.end.y) < EPS) {
+        ordered.push({ ...next, start: next.end, end: next.start });
+      } else {
+        ordered.push(next);
+      }
+    }
+    if (ordered.length >= 2) {
+      const shape = new THREE.Shape();
+      shape.moveTo((ordered[0].start.x - cw / 2) / PPU, -(ordered[0].start.y - ch / 2) / PPU);
+      for (const line of ordered) {
+        shape.lineTo((line.end.x - cw / 2) / PPU, -(line.end.y - ch / 2) / PPU);
+      }
+      shape.closePath();
+      return shape;
+    }
+  }
+
   return null;
 }
 
 /** Centroide del primer shape en coordenadas de mundo (worldX, worldZ). */
-function entityCentroid(
-  entities: SketchEntity[],
-  cw: number,
-  ch: number
-): [number, number] {
+function entityCentroid(entities: SketchEntity[], cw: number, ch: number): [number, number] {
   for (const e of entities) {
     if (e.type === SketchEntityType.CIRCLE) {
       const c = e as CircleEntity;
@@ -132,6 +160,15 @@ function entityCentroid(
       return [(a.center.x - cw / 2) / PPU, (a.center.y - ch / 2) / PPU];
     }
   }
+  // Fallback: centroide promedio de todos los vértices de los segmentos LINE
+  const lines = entities.filter((e) => e.type === SketchEntityType.LINE) as LineEntity[];
+  if (lines.length > 0) {
+    const xs = lines.flatMap((l) => [l.start.x, l.end.x]);
+    const ys = lines.flatMap((l) => [l.start.y, l.end.y]);
+    const mx = xs.reduce((a, b) => a + b, 0) / xs.length;
+    const my = ys.reduce((a, b) => a + b, 0) / ys.length;
+    return [(mx - cw / 2) / PPU, (my - ch / 2) / PPU];
+  }
   return [0, 0];
 }
 
@@ -141,9 +178,7 @@ interface ExtrudePreviewGizmoProps {
   onTransformingChange?: (t: boolean) => void;
 }
 
-export default function ExtrudePreviewGizmo({
-  onTransformingChange,
-}: ExtrudePreviewGizmoProps) {
+export default function ExtrudePreviewGizmo({ onTransformingChange }: ExtrudePreviewGizmoProps) {
   const extrudePreviewActive = useUIStore((s) => s.extrudePreviewActive);
   const distance = useUIStore((s) => s.extrudePreviewDistance);
   const setDistance = useUIStore((s) => s.setExtrudePreviewDistance);
@@ -260,9 +295,10 @@ export default function ExtrudePreviewGizmo({
   const groupY = direction === 'positive' ? 0 : -distance;
 
   // Posición Y del handle (siempre en la cara "libre", lejos del sketch)
-  const handleTopY = direction === 'negative'
-    ? -(distance + 0.12)   // cara inferior para negativo
-    : distance + 0.12;     // cara superior para positivo y both
+  const handleTopY =
+    direction === 'negative'
+      ? -(distance + 0.12) // cara inferior para negativo
+      : distance + 0.12; // cara superior para positivo y both
 
   // El cono apunta en la dirección de extrusión
   const coneRotX = direction === 'negative' ? Math.PI : 0;
@@ -275,7 +311,6 @@ export default function ExtrudePreviewGizmo({
     <group>
       {/* ── Preview mesh desplazado según dirección ── */}
       <group position={[0, groupY, 0]}>
-
         {/* Preview semi-transparente azul */}
         <mesh geometry={previewGeometry} renderOrder={1}>
           <meshStandardMaterial
@@ -289,21 +324,19 @@ export default function ExtrudePreviewGizmo({
 
         {/* Aristas wireframe azul claro */}
         <mesh geometry={previewGeometry} renderOrder={2}>
-          <meshBasicMaterial
-            color="#93c5fd"
-            wireframe
-            opacity={0.4}
-            transparent
-          />
+          <meshBasicMaterial color="#93c5fd" wireframe opacity={0.4} transparent />
         </mesh>
-
       </group>
 
       {/* ══ Línea de dimensión lateral ══ */}
 
       {/* Shaft de la línea (siempre entre y=groupY y y=groupY+geoDist) */}
-      <mesh position={[cx + dimOffset, groupY + (direction === 'both' ? distance : distance / 2), cz]}>
-        <cylinderGeometry args={[0.015, 0.015, Math.max(0.02, distance * (direction === 'both' ? 2 : 1)), 4]} />
+      <mesh
+        position={[cx + dimOffset, groupY + (direction === 'both' ? distance : distance / 2), cz]}
+      >
+        <cylinderGeometry
+          args={[0.015, 0.015, Math.max(0.02, distance * (direction === 'both' ? 2 : 1)), 4]}
+        />
         <meshBasicMaterial color="#ffffff" opacity={0.65} transparent />
       </mesh>
 
@@ -324,7 +357,11 @@ export default function ExtrudePreviewGizmo({
 
       {/* Badge de medida */}
       <Html
-        position={[cx + dimOffset + 0.26, groupY + (direction === 'both' ? distance : distance / 2), cz]}
+        position={[
+          cx + dimOffset + 0.26,
+          groupY + (direction === 'both' ? distance : distance / 2),
+          cz,
+        ]}
         style={{ pointerEvents: 'none', transform: 'translateY(-50%)' }}
         occlude={false}
       >
@@ -355,16 +392,9 @@ export default function ExtrudePreviewGizmo({
       </mesh>
 
       {/* Cabeza cónica */}
-      <mesh
-        position={[cx, handleTopY + coneOffsetY, cz]}
-        rotation={[coneRotX, 0, 0]}
-      >
+      <mesh position={[cx, handleTopY + coneOffsetY, cz]} rotation={[coneRotX, 0, 0]}>
         <coneGeometry args={[0.15, 0.36, 12]} />
-        <meshBasicMaterial
-          color={hovered ? '#fbbf24' : '#e2e8f0'}
-          opacity={0.95}
-          transparent
-        />
+        <meshBasicMaterial color={hovered ? '#fbbf24' : '#e2e8f0'} opacity={0.95} transparent />
       </mesh>
 
       {/* Área de click invisible (cilindro grande, más fácil de agarrar) */}
@@ -391,7 +421,6 @@ export default function ExtrudePreviewGizmo({
           </mesh>
         </>
       )}
-
     </group>
   );
 }
