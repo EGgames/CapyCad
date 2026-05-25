@@ -44,3 +44,5 @@ pnpm-debug.log*
 .cache
 temp
 tmp
+
+apps/desktop/release/

@@ -1,8 +1,9 @@
 {
   "name": "@capycad/desktop",
-  "version": "0.1.0",
+  "version": "0.1.1a",
   "private": true,
   "description": "CapyCad — Electron desktop wrapper",
+  "author": "Emiliano Galmarini",
   "repository": {
     "type": "git",
     "url": "https://github.com/EGgames/CapyCad.git"
@@ -24,8 +25,10 @@
     "productName": "CapyCad",
     "copyright": "Copyright © 2026 Emiliano Galmarini",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "assets"
     },
+    "artifactName": "CapyCad-${version}-${os}-${arch}.${ext}",
     "files": [
       "src/**"
     ],
@@ -46,17 +49,35 @@
             "x64"
           ]
         }
-      ],
-      "icon": "assets/icon.ico"
+      ]
     },
     "mac": {
-      "target": "dmg",
-      "category": "public.app-category.graphics-design",
-      "icon": "assets/icon.icns"
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.graphics-design"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "assets/icon.png"
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
