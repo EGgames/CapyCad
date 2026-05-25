@@ -112,7 +112,7 @@ jobs:
         run: sudo apt-get install -y rpm fakeroot
 
       - name: Empaquetar Electron
-        run: pnpm --filter @capycad/desktop run build -- --publish never
+        run: pnpm --filter @capycad/desktop build
 
       - name: Subir instalador
         uses: actions/upload-artifact@v4
