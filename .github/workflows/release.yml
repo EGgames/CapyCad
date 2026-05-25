@@ -3,13 +3,13 @@ name: Release Pipeline
 on:
   push:
     branches: [test, main]
-    tags: ["v*.*.*"]
+    tags: ['v*.*.*']
   pull_request:
     branches: [main]
   workflow_dispatch:
     inputs:
       build_release:
-        description: "Forzar build multiplataforma"
+        description: 'Forzar build multiplataforma'
         type: boolean
         default: false
 
@@ -18,7 +18,6 @@ permissions:
   pull-requests: write
 
 jobs:
-
   # ── 1. AUTO PR: test → main ──────────────────────────────────
   open-pr:
     name: Abrir PR a main
@@ -112,6 +111,20 @@ jobs:
         if: matrix.platform == 'linux'
         run: sudo apt-get install -y rpm fakeroot
 
+      - name: Limpiar assets de auto-update previos
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./apps/desktop/package.json').version")
+          TAG="v${VERSION}"
+          case "${{ matrix.platform }}" in
+            linux) ASSET="latest-linux.yml" ;;
+            mac)   ASSET="latest-mac.yml"   ;;
+            win)   ASSET="latest.yml"       ;;
+          esac
+          gh release delete-asset "$TAG" "$ASSET" --yes 2>/dev/null || true
+
       - name: Empaquetar Electron
         run: pnpm --filter @capycad/desktop build
         env:
@@ -156,7 +169,7 @@ jobs:
       - name: Publicar GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "CapyCad ${{ steps.ver.outputs.tag }}"
+          name: 'CapyCad ${{ steps.ver.outputs.tag }}'
           tag_name: ${{ steps.ver.outputs.tag }}
           draft: ${{ steps.ver.outputs.draft }}
           prerelease: ${{ contains(steps.ver.outputs.tag, '-') }}
