@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+---
+
+## [0.1.1a] - 2026-05-24
+
+### Fixed
+
+- **Extrusión — ghost preview nunca visible**: `ToolbarExtrude` no llamaba a `setEditMode('3d')` antes de activar el preview. El `Canvas3D` (que contiene `ExtrudePreviewGizmo` + `ExtrudePreviewHUD`) tenía `display:none` mientras el editor estaba en modo 2D, por lo que el fantasma nunca se renderizaba. Ahora `setEditMode('3d')` se invoca antes de `setExtrudePreviewActive(true)`.
+- **Extrusión — entidades LINE no soportadas en ghost**: `entitiesToShape()` en `ExtrudePreviewGizmo` no manejaba entidades de tipo `LINE`. Las sketches dibujadas con la herramienta Línea no generaban geometría de preview. Se agregó fallback que ordena los segmentos LINE en una cadena conectada y construye un `THREE.Shape` via moveTo/lineTo/closePath.
+- **Extrusión — vector de extrusión incorrecto en OCC**: El worker de OpenCascade usaba el eje Y (`gp_Vec_4(0, signedDistance, 0)`) en lugar del eje Z correcto (`gp_Vec_4(0, 0, signedDistance)`).
+
+### Added
+
+- **`extrusionUtils.ts`**: Utilidad pura `computeExtrusionVecParams(direction, distance)` que centraliza el cálculo del vector de extrusión OCC (eje Z, con signo según dirección).
+- **Tests de extrusión**: 10 test cases en `extrusionUtils.test.ts` cubriendo los 3 modos de dirección (positive, negative, both).
+
+---
+
+### Added (Unreleased)
+
 - **Fase 2 — CAD Completo (US-009 a US-015)**:
   - **Restricciones Paramétricas (US-009)**: Constraint solver con 7 tipos (horizontal, vertical, distance, equal, concentric, parallel, perpendicular, tangent) + DOF analyzer + ConstraintOverlay UI
   - **Shell (US-010)**: `executeShell()` en cad.worker.ts usando `BRepOffsetAPI_MakeThickSolid` con espesor configurable

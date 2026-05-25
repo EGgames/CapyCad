@@ -1,6 +1,6 @@
 {
   "name": "@capycad/web",
-  "version": "0.1.0",
+  "version": "0.1.1a",
   "private": true,
   "type": "module",
   "scripts": {

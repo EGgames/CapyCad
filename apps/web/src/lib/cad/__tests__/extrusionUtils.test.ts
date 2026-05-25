@@ -17,14 +17,14 @@ import { computeExtrusionVecParams } from '../extrusionUtils';
 describe('computeExtrusionVecParams', () => {
   describe('dirección "positive"', () => {
     it('computeExtrusionVecParams_whenPositive_thenZComponentPositive', () => {
-      const [x, y, z] = computeExtrusionVecParams('positive', 10);
+      const [, , z] = computeExtrusionVecParams('positive', 10);
 
       // El vector debe apuntar en +Z (eje perpendicular al plano XY del sketch)
       expect(z).toBe(10);
     });
 
     it('computeExtrusionVecParams_whenPositive_thenXYComponentsZero', () => {
-      const [x, y, z] = computeExtrusionVecParams('positive', 10);
+      const [x, y] = computeExtrusionVecParams('positive', 10);
 
       // No debe haber componente en X ni en Y (no extruir dentro del plano del sketch)
       expect(x).toBe(0);
@@ -41,14 +41,14 @@ describe('computeExtrusionVecParams', () => {
 
   describe('dirección "negative"', () => {
     it('computeExtrusionVecParams_whenNegative_thenZComponentNegative', () => {
-      const [x, y, z] = computeExtrusionVecParams('negative', 10);
+      const [, , z] = computeExtrusionVecParams('negative', 10);
 
       // El vector debe apuntar en −Z
       expect(z).toBe(-10);
     });
 
     it('computeExtrusionVecParams_whenNegative_thenXYComponentsZero', () => {
-      const [x, y, z] = computeExtrusionVecParams('negative', 10);
+      const [x, y] = computeExtrusionVecParams('negative', 10);
 
       expect(x).toBe(0);
       expect(y).toBe(0);
