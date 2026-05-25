@@ -5,19 +5,14 @@ import { useFeatureStore } from '@/stores/featureStore';
 import { useUIStore } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
 import { usePanelOrientation } from '../ui/panelOrientation';
-import {
-  RevolveDialog,
-  SweepDialog,
-  LoftDialog,
-} from './Tool3DDialogs';
+import { RevolveDialog, SweepDialog, LoftDialog } from './Tool3DDialogs';
 import { FeatureType, type ExtrudeFeature } from '@capycad/shared-types';
 
 type ExtrudeAction = 'extrude' | 'revolve' | 'sweep' | 'loft';
 
 export default function ToolbarExtrude() {
   const { activeSketch, setEditMode, selectedEntities } = useSketchStore();
-  const { createRevolve, createSweep, createLoft, isProcessing } =
-    useFeatureStore();
+  const { createRevolve, createSweep, createLoft, isProcessing } = useFeatureStore();
   const selectedFeatureId = useFeatureStore((s) => s.selectedFeatureId);
   const features = useFeatureStore((s) => s.features);
   const setExtrudePreviewActive = useUIStore((s) => s.setExtrudePreviewActive);
@@ -54,9 +49,7 @@ export default function ToolbarExtrude() {
     }
   };
 
-  const handleSweep = async (
-    pathPoints: Array<{ x: number; y: number; z: number }>
-  ) => {
+  const handleSweep = async (pathPoints: Array<{ x: number; y: number; z: number }>) => {
     if (!requireSketch()) return;
     try {
       await createSweep(activeSketch!.entities, pathPoints);
@@ -142,23 +135,16 @@ export default function ToolbarExtrude() {
       data-testid="toolbar-extrude"
       className={cn(
         'gap-1 px-2 sm:px-4',
-        isVertical
-          ? 'flex flex-col items-stretch py-2'
-          : 'flex items-center overflow-x-auto'
+        isVertical ? 'flex flex-col items-stretch py-2' : 'flex items-center overflow-x-auto'
       )}
     >
       <div
         className={cn(
-          isVertical
-            ? 'flex flex-col items-stretch space-y-1'
-            : 'flex items-center space-x-1'
+          isVertical ? 'flex flex-col items-stretch space-y-1' : 'flex items-center space-x-1'
         )}
       >
         <span
-          className={cn(
-            'text-xs font-medium text-muted-foreground',
-            isVertical ? 'mb-1' : 'mr-2'
-          )}
+          className={cn('text-xs font-medium text-muted-foreground', isVertical ? 'mb-1' : 'mr-2')}
         >
           Extrusión:
         </span>
@@ -185,6 +171,9 @@ export default function ToolbarExtrude() {
                   // para que Gizmo y HUD usen exactamente esas entidades aunque la
                   // selección se limpie al interactuar con la escena 3D.
                   setExtrudePreviewEntityIds([...selectedEntities]);
+                  // Cambiar a modo 3D para que Canvas3D (que contiene el Gizmo y el HUD)
+                  // sea visible. Sin este cambio el ghost nunca aparece.
+                  setEditMode('3d');
                   setExtrudePreviewActive(true);
                 } else {
                   setActiveDialog(tool.action as Exclude<ExtrudeAction, 'extrude'>);
