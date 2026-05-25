@@ -1,15 +1,15 @@
-name: Release Pipeline
+﻿name: Release Pipeline
 
 on:
   push:
-    branches: [test, main]
-    tags: ['v*.*.*']
+    branches: [test]
+    tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
     inputs:
       build_release:
-        description: 'Forzar build multiplataforma'
+        description: 'Forzar build multiplataforma (crea draft release)'
         type: boolean
         default: false
 
@@ -18,9 +18,9 @@ permissions:
   pull-requests: write
 
 jobs:
-  # ── 1. AUTO PR: test → main ──────────────────────────────────
+  # ── 1. AUTO PR: test → main ─────────────────────────────────────────
   open-pr:
-    name: Abrir PR a main
+    name: Abrir PR (test → main)
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/test'
     steps:
@@ -36,18 +36,18 @@ jobs:
               --base main \
               --head test \
               --title "release: test -> main" \
-              --body "PR automatico creado al actualizar la rama test. Hacer merge para disparar el build multiplataforma y crear la release." \
+              --body "PR automático. Hacer merge para luego crear el tag y disparar el build multiplataforma." \
               --repo "$GITHUB_REPOSITORY" \
-              || echo "::warning::No se pudo crear el PR automaticamente. Habilite 'Allow GitHub Actions to create and approve pull requests' en Settings > Actions > General, o cree el PR manualmente."
-            echo "Paso completado."
+              || echo "::warning::No se pudo crear el PR."
           else
-            echo "Ya existe un PR abierto (total: $COUNT). No se crea uno nuevo."
+            echo "PR ya existe ($COUNT abiertos). Sin acción."
           fi
 
-  # ── 2. VALIDAR (type-check + build) ──────────────────────────
+  # ── 2. VALIDAR (solo en PRs y ramas, no en tags) ────────────────────
   validate:
-    name: Validar build
+    name: Validar (type-check + build web)
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
     steps:
       - uses: actions/checkout@v4
 
@@ -59,7 +59,7 @@ jobs:
           cache: pnpm
 
       - name: Instalar dependencias
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Type check
         run: pnpm --filter @capycad/web run type-check
@@ -69,13 +69,11 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
-  # ── 3. BUILD MULTIPLATAFORMA ──────────────────────────────────
+  # ── 3. BUILD INSTALADORES (solo en tags o workflow_dispatch) ────────
   build:
     name: Build ${{ matrix.platform }}
-    needs: validate
     runs-on: ${{ matrix.os }}
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       startsWith(github.ref, 'refs/tags/v') ||
       (github.event_name == 'workflow_dispatch' && inputs.build_release == true)
     strategy:
@@ -100,68 +98,80 @@ jobs:
           cache: pnpm
 
       - name: Instalar dependencias
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build web renderer
         run: pnpm --filter @capycad/web build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
-      - name: Instalar deps nativas Linux (AppImage)
+      - name: Instalar dependencias nativas (Linux)
         if: matrix.platform == 'linux'
-        run: sudo apt-get install -y rpm fakeroot
+        run: sudo apt-get install -y rpm fakeroot libarchive-tools
 
-      - name: Empaquetar Electron
+      - name: Build instalador Electron
         run: pnpm --filter @capycad/desktop build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Subir instalador
+      - name: Listar artefactos generados
+        shell: bash
+        run: ls -lh apps/desktop/release/ || true
+
+      - name: Subir artefacto (Windows)
+        if: matrix.platform == 'win'
         uses: actions/upload-artifact@v4
         with:
-          name: capycad-${{ matrix.platform }}-${{ github.ref_name }}
+          name: capycad-win
           path: |
             apps/desktop/release/*.exe
-            apps/desktop/release/*.dmg
-            apps/desktop/release/*.AppImage
-            apps/desktop/release/*.yml
-            apps/desktop/release/*.blockmap
+            apps/desktop/release/*.exe.blockmap
           if-no-files-found: error
-          retention-days: 60
+          retention-days: 7
 
-  # ── 4. CREAR GITHUB RELEASE ──────────────────────────────────
+      - name: Subir artefacto (macOS)
+        if: matrix.platform == 'mac'
+        uses: actions/upload-artifact@v4
+        with:
+          name: capycad-mac
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.dmg.blockmap
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Subir artefacto (Linux)
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: capycad-linux
+          path: |
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.AppImage.blockmap
+          if-no-files-found: error
+          retention-days: 7
+
+  # ── 4. CREAR GITHUB RELEASE ─────────────────────────────────────────
   release:
-    name: Crear Release
+    name: Crear GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      startsWith(github.ref, 'refs/tags/v')
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Descargar artefactos
+      - name: Descargar todos los artefactos
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
-      - name: Resolver version
-        id: ver
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-            echo "draft=false" >> "$GITHUB_OUTPUT"
-          else
-            VERSION=$(node -p "require('./package.json').version")
-            echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
-            echo "draft=true" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Listar artefactos descargados
+        run: ls -lh artifacts/
 
       - name: Publicar GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: 'CapyCad ${{ steps.ver.outputs.tag }}'
-          tag_name: ${{ steps.ver.outputs.tag }}
-          draft: ${{ steps.ver.outputs.draft }}
-          prerelease: ${{ contains(steps.ver.outputs.tag, '-') }}
-          files: artifacts/**/*
+          name: 'CapyCad ${{ github.ref_name }}'
+          draft: ${{ github.event_name == 'workflow_dispatch' }}
+          prerelease: ${{ contains(github.ref_name, 'a') || contains(github.ref_name, 'b') || contains(github.ref_name, 'rc') || contains(github.ref_name, '-') }}
+          files: artifacts/*
           generate_release_notes: true
           make_latest: true
