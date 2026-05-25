@@ -195,7 +195,7 @@ export function buildM3FData(
 
   return {
     version: '1.0',
-    projectName: options.projectName ?? 'STL-Model Project',
+    projectName: options.projectName ?? 'CapyCad Project',
     exportedAt: new Date().toISOString(),
     units: options.units ?? 'mm',
     metrics: {

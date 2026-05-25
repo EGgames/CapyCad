@@ -23,7 +23,7 @@ Given('que el usuario abre la aplicación CAD', async () => {
 
 Then('la página debería cargar sin errores críticos', async () => {
   await actorCalled('Diseñador').attemptsTo(
-    Ensure.that(AppState.pageTitle(), equals('STL-Model - CAD Web App'))
+    Ensure.that(AppState.pageTitle(), equals('CapyCad - CAD Web App'))
   );
 });
 

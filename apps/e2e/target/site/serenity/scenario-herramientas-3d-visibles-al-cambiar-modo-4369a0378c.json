@@ -1,0 +1,318 @@
+{
+  "id": "aplicaci-n-cad---funcionalidades-principales;herramientas-3d-visibles-al-cambiar-modo;firefox-151-0-1;windows",
+  "name": "Herramientas 3D visibles al cambiar modo",
+  "title": "Herramientas 3D visibles al cambiar modo",
+  "manual": false,
+  "testSteps": [
+    {
+      "number": 1,
+      "description": "Before",
+      "startTime": "2026-05-24T20:37:53.291Z",
+      "children": [],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 0,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 2,
+      "description": "Dado que el usuario abre la aplicación CAD",
+      "startTime": "2026-05-24T20:37:53.291Z",
+      "children": [
+        {
+          "number": 3,
+          "description": "Diseñador abre la aplicación CAD en http://localhost:5173",
+          "startTime": "2026-05-24T20:37:53.292Z",
+          "children": [
+            {
+              "number": 4,
+              "description": "Diseñador navigates to &quot;http://localhost:5173&quot;",
+              "startTime": "2026-05-24T20:37:53.293Z",
+              "children": [],
+              "reportData": [],
+              "screenshots": [],
+              "duration": 628,
+              "result": "SUCCESS"
+            }
+          ],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 646,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 666,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 5,
+      "description": "Cuando el usuario activa el modo 3D",
+      "startTime": "2026-05-24T20:37:53.957Z",
+      "children": [
+        {
+          "number": 6,
+          "description": "Diseñador activa el modo 3D",
+          "startTime": "2026-05-24T20:37:53.962Z",
+          "children": [
+            {
+              "number": 7,
+              "description": "Diseñador hace click en el botón de Vista 3D",
+              "startTime": "2026-05-24T20:37:53.962Z",
+              "children": [
+                {
+                  "number": 8,
+                  "description": "Diseñador espera que la toolbar esté lista",
+                  "startTime": "2026-05-24T20:37:53.962Z",
+                  "children": [],
+                  "reportData": [],
+                  "screenshots": [],
+                  "duration": 20,
+                  "result": "SUCCESS"
+                },
+                {
+                  "number": 9,
+                  "description": "Diseñador waits for 200ms",
+                  "startTime": "2026-05-24T20:37:54.005Z",
+                  "children": [],
+                  "reportData": [],
+                  "screenshots": [],
+                  "duration": 205,
+                  "result": "SUCCESS"
+                },
+                {
+                  "number": 10,
+                  "description": "Diseñador executes a synchronous script with arguments: [ page element located by css (&apos;[title=&quot;Vista 3D — Canvas tridimensional&quot;]&apos;) ]",
+                  "startTime": "2026-05-24T20:37:54.225Z",
+                  "children": [],
+                  "reportData": [
+                    {
+                      "id": "report-data-a236fffd8a87651ab7ab4c6070bde4bd27bd615c",
+                      "isEvidence": false,
+                      "path": "",
+                      "title": "Script source",
+                      "contents": "arguments[0].click()"
+                    }
+                  ],
+                  "screenshots": [],
+                  "duration": 15,
+                  "result": "SUCCESS"
+                }
+              ],
+              "reportData": [],
+              "screenshots": [],
+              "duration": 294,
+              "result": "SUCCESS"
+            },
+            {
+              "number": 11,
+              "description": "Diseñador waits for 300ms",
+              "startTime": "2026-05-24T20:37:54.273Z",
+              "children": [],
+              "reportData": [],
+              "screenshots": [],
+              "duration": 311,
+              "result": "SUCCESS"
+            }
+          ],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 639,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 660,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 12,
+      "description": "Entonces debería ver el botón &quot;Extruir&quot;",
+      "startTime": "2026-05-24T20:37:54.617Z",
+      "children": [
+        {
+          "number": 13,
+          "description": "Diseñador waits until la presencia del botón &quot;Extruir&quot; does equal true",
+          "startTime": "2026-05-24T20:37:54.621Z",
+          "children": [],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 28,
+          "result": "SUCCESS"
+        },
+        {
+          "number": 14,
+          "description": "Diseñador ensures that la presencia del botón &quot;Extruir&quot; does equal true",
+          "startTime": "2026-05-24T20:37:54.663Z",
+          "children": [],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 13,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 78,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 15,
+      "description": "Y debería ver el botón &quot;Revolución&quot;",
+      "startTime": "2026-05-24T20:37:54.695Z",
+      "children": [
+        {
+          "number": 16,
+          "description": "Diseñador waits until la presencia del botón &quot;Revolución&quot; does equal true",
+          "startTime": "2026-05-24T20:37:54.699Z",
+          "children": [],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 24,
+          "result": "SUCCESS"
+        },
+        {
+          "number": 17,
+          "description": "Diseñador ensures that la presencia del botón &quot;Revolución&quot; does equal true",
+          "startTime": "2026-05-24T20:37:54.741Z",
+          "children": [],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 12,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 78,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 18,
+      "description": "Y debería ver el botón &quot;Fillet&quot;",
+      "startTime": "2026-05-24T20:37:54.773Z",
+      "children": [
+        {
+          "number": 19,
+          "description": "Diseñador waits until la presencia del botón &quot;Fillet&quot; does equal true",
+          "startTime": "2026-05-24T20:37:54.780Z",
+          "children": [],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 37,
+          "result": "SUCCESS"
+        },
+        {
+          "number": 20,
+          "description": "Diseñador ensures that la presencia del botón &quot;Fillet&quot; does equal true",
+          "startTime": "2026-05-24T20:37:54.830Z",
+          "children": [],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 14,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 91,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 21,
+      "description": "Y debería ver el botón &quot;Chamfer&quot;",
+      "startTime": "2026-05-24T20:37:54.865Z",
+      "children": [
+        {
+          "number": 22,
+          "description": "Diseñador waits until la presencia del botón &quot;Chamfer&quot; does equal true",
+          "startTime": "2026-05-24T20:37:54.868Z",
+          "children": [],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 24,
+          "result": "SUCCESS"
+        },
+        {
+          "number": 23,
+          "description": "Diseñador ensures that la presencia del botón &quot;Chamfer&quot; does equal true",
+          "startTime": "2026-05-24T20:37:54.912Z",
+          "children": [],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 12,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 78,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 24,
+      "description": "After",
+      "startTime": "2026-05-24T20:37:54.943Z",
+      "children": [],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 2,
+      "result": "SUCCESS"
+    }
+  ],
+  "userStory": {
+    "id": "aplicaci-n-cad---funcionalidades-principales",
+    "storyName": "Aplicación CAD — Funcionalidades principales",
+    "displayName": "Aplicación CAD — Funcionalidades principales",
+    "path": "cad-app",
+    "type": "feature",
+    "narrative": "Como diseñador que trabaja con modelos 3D\nQuiero usar la aplicación CAD en el navegador\nPara crear y editar bocetos y modelos tridimensionales",
+    "pathElements": [{ "name": "cad-app", "description": "Cad-app" }]
+  },
+  "startTime": "2026-05-24T20:37:53.290Z",
+  "context": "firefox,windows",
+  "driver": "firefox",
+  "tags": [
+    {
+      "name": "firefox 151.0.1",
+      "type": "browser",
+      "browserName": "firefox",
+      "browserVersion": "151.0.1",
+      "displayName": "firefox 151.0.1"
+    },
+    {
+      "name": "windows",
+      "type": "platform",
+      "platformName": "windows",
+      "platformVersion": "",
+      "displayName": "windows"
+    },
+    {
+      "name": "Aplicación CAD — Funcionalidades principales",
+      "type": "feature",
+      "displayName": "Aplicación CAD — Funcionalidades principales"
+    }
+  ],
+  "testSource": "JS",
+  "featureTag": {
+    "name": "Aplicación CAD — Funcionalidades principales",
+    "type": "feature",
+    "displayName": "Aplicación CAD — Funcionalidades principales"
+  },
+  "actors": [
+    {
+      "name": "Diseñador",
+      "can": [
+        "PerformActivities",
+        "AnswerQuestions",
+        "RaiseErrors",
+        "ScheduleWork { scheduler: { clock: { timeAdjustment: { milliseconds: 0 } }, interactionTimeout: { milliseconds: 5000 } } }",
+        "BrowseTheWeb (BrowseTheWebWithWebdriverIO)"
+      ]
+    }
+  ],
+  "result": "SUCCESS",
+  "duration": 1684
+}

@@ -527,7 +527,7 @@ export default function Toolbar() {
         <div className="flex h-8 w-8 items-center justify-center rounded bg-primary">
           <Box className="h-5 w-5 text-primary-foreground" />
         </div>
-        <span className="text-lg font-semibold">STL-Model</span>
+        <span className="text-lg font-semibold">CapyCad</span>
       </div>
 
       {/* Separador */}

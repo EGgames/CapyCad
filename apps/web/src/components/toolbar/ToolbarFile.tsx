@@ -23,15 +23,7 @@ import { usePanelOrientation } from '../ui/panelOrientation';
 import { useDarkMode } from '@/hooks/useDarkMode';
 
 export default function ToolbarFile() {
-  const {
-    editMode,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    activeSketch,
-    setEditMode,
-  } = useSketchStore();
+  const { editMode, undo, redo, canUndo, canRedo, activeSketch, setEditMode } = useSketchStore();
   const {
     features,
     geometries,
@@ -136,9 +128,7 @@ export default function ToolbarFile() {
       data-testid="toolbar-file"
       className={cn(
         'gap-1 px-2 sm:px-4',
-        isVertical
-          ? 'flex flex-col items-stretch py-2'
-          : 'flex items-center overflow-x-auto'
+        isVertical ? 'flex flex-col items-stretch py-2' : 'flex items-center overflow-x-auto'
       )}
     >
       {/* Logo */}
@@ -146,14 +136,19 @@ export default function ToolbarFile() {
         <div className="flex h-8 w-8 items-center justify-center rounded bg-primary">
           <Box className="h-5 w-5 text-primary-foreground" />
         </div>
-        <span className="text-lg font-semibold">STL-Model</span>
+        <span className="text-lg font-semibold">CapyCad</span>
       </div>
 
       {/* Separador */}
       <div className={sep} />
 
       {/* Toggle Vista 2D / 3D */}
-      <div className={cn('flex items-center rounded-md border border-border p-1', isVertical ? 'self-stretch justify-center' : 'ml-2')}>
+      <div
+        className={cn(
+          'flex items-center rounded-md border border-border p-1',
+          isVertical ? 'self-stretch justify-center' : 'ml-2'
+        )}
+      >
         <button
           onClick={() => setEditMode('2d')}
           className={cn(
@@ -184,7 +179,11 @@ export default function ToolbarFile() {
       <div className={sep} />
 
       {/* Acciones de archivo */}
-      <div className={cn(isVertical ? 'flex flex-col items-stretch space-y-1' : 'flex items-center space-x-1')}>
+      <div
+        className={cn(
+          isVertical ? 'flex flex-col items-stretch space-y-1' : 'flex items-center space-x-1'
+        )}
+      >
         {/* Input oculto para abrir .stlm */}
         <input
           ref={fileInputRef}
@@ -283,12 +282,18 @@ export default function ToolbarFile() {
       <div className={sep} />
 
       {/* Undo/Redo */}
-      <div className={cn(isVertical ? 'flex flex-col items-stretch space-y-1' : 'flex items-center space-x-1')}>
+      <div
+        className={cn(
+          isVertical ? 'flex flex-col items-stretch space-y-1' : 'flex items-center space-x-1'
+        )}
+      >
         <button
           onClick={activeUndo}
           disabled={!activeCanUndo()}
           className={cn(
-            isVertical ? 'flex h-9 w-full items-center gap-2 rounded-md px-3' : 'flex h-9 w-9 items-center justify-center rounded-md',
+            isVertical
+              ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
+              : 'flex h-9 w-9 items-center justify-center rounded-md',
             activeCanUndo() ? 'hover:bg-muted' : 'cursor-not-allowed opacity-50'
           )}
           title="Deshacer (Ctrl+Z)"
@@ -300,7 +305,9 @@ export default function ToolbarFile() {
           onClick={activeRedo}
           disabled={!activeCanRedo()}
           className={cn(
-            isVertical ? 'flex h-9 w-full items-center gap-2 rounded-md px-3' : 'flex h-9 w-9 items-center justify-center rounded-md',
+            isVertical
+              ? 'flex h-9 w-full items-center gap-2 rounded-md px-3'
+              : 'flex h-9 w-9 items-center justify-center rounded-md',
             activeCanRedo() ? 'hover:bg-muted' : 'cursor-not-allowed opacity-50'
           )}
           title="Rehacer (Ctrl+Y)"

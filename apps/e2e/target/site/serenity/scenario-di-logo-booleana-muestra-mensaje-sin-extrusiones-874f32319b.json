@@ -1,0 +1,264 @@
+{
+  "id": "aplicaci-n-cad---funcionalidades-principales;di-logo-booleana-muestra-mensaje-sin-extrusiones;firefox-151-0-1;windows",
+  "name": "Diálogo booleana muestra mensaje sin extrusiones",
+  "title": "Diálogo booleana muestra mensaje sin extrusiones",
+  "manual": false,
+  "testSteps": [
+    {
+      "number": 1,
+      "description": "Before",
+      "startTime": "2026-05-24T20:37:59.177Z",
+      "children": [],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 0,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 2,
+      "description": "Dado que el usuario abre la aplicación CAD",
+      "startTime": "2026-05-24T20:37:59.177Z",
+      "children": [
+        {
+          "number": 3,
+          "description": "Diseñador abre la aplicación CAD en http://localhost:5173",
+          "startTime": "2026-05-24T20:37:59.179Z",
+          "children": [
+            {
+              "number": 4,
+              "description": "Diseñador navigates to &quot;http://localhost:5173&quot;",
+              "startTime": "2026-05-24T20:37:59.179Z",
+              "children": [],
+              "reportData": [],
+              "screenshots": [],
+              "duration": 732,
+              "result": "SUCCESS"
+            }
+          ],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 742,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 781,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 5,
+      "description": "Cuando el usuario activa el modo 3D",
+      "startTime": "2026-05-24T20:37:59.959Z",
+      "children": [
+        {
+          "number": 6,
+          "description": "Diseñador activa el modo 3D",
+          "startTime": "2026-05-24T20:37:59.967Z",
+          "children": [
+            {
+              "number": 7,
+              "description": "Diseñador hace click en el botón de Vista 3D",
+              "startTime": "2026-05-24T20:37:59.968Z",
+              "children": [
+                {
+                  "number": 8,
+                  "description": "Diseñador espera que la toolbar esté lista",
+                  "startTime": "2026-05-24T20:37:59.968Z",
+                  "children": [],
+                  "reportData": [],
+                  "screenshots": [],
+                  "duration": 15,
+                  "result": "SUCCESS"
+                },
+                {
+                  "number": 9,
+                  "description": "Diseñador waits for 200ms",
+                  "startTime": "2026-05-24T20:37:59.998Z",
+                  "children": [],
+                  "reportData": [],
+                  "screenshots": [],
+                  "duration": 203,
+                  "result": "SUCCESS"
+                },
+                {
+                  "number": 10,
+                  "description": "Diseñador executes a synchronous script with arguments: [ page element located by css (&apos;[title=&quot;Vista 3D — Canvas tridimensional&quot;]&apos;) ]",
+                  "startTime": "2026-05-24T20:38:00.217Z",
+                  "children": [],
+                  "reportData": [
+                    {
+                      "id": "report-data-7f8a0861af82ffe8efa6fcc10969b2b286a01ba9",
+                      "isEvidence": false,
+                      "path": "",
+                      "title": "Script source",
+                      "contents": "arguments[0].click()"
+                    }
+                  ],
+                  "screenshots": [],
+                  "duration": 21,
+                  "result": "SUCCESS"
+                }
+              ],
+              "reportData": [],
+              "screenshots": [],
+              "duration": 295,
+              "result": "SUCCESS"
+            },
+            {
+              "number": 11,
+              "description": "Diseñador waits for 300ms",
+              "startTime": "2026-05-24T20:38:00.278Z",
+              "children": [],
+              "reportData": [],
+              "screenshots": [],
+              "duration": 315,
+              "result": "SUCCESS"
+            }
+          ],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 641,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 665,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 12,
+      "description": "Y el usuario abre el diálogo de booleana",
+      "startTime": "2026-05-24T20:38:00.625Z",
+      "children": [
+        {
+          "number": 13,
+          "description": "Diseñador waits until la presencia de la barra de booleanas does equal true",
+          "startTime": "2026-05-24T20:38:00.638Z",
+          "children": [],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 28,
+          "result": "SUCCESS"
+        },
+        {
+          "number": 14,
+          "description": "Diseñador executes a synchronous script with arguments: [ page element located by css (&apos;[data-testid=&quot;boolean-union-btn&quot;]&apos;) ]",
+          "startTime": "2026-05-24T20:38:00.686Z",
+          "children": [],
+          "reportData": [
+            {
+              "id": "report-data-cdbcfa6e12ca78036590173f3433b3c0aee19712",
+              "isEvidence": false,
+              "path": "",
+              "title": "Script source",
+              "contents": "arguments[0].click()"
+            }
+          ],
+          "screenshots": [],
+          "duration": 13,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 93,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 15,
+      "description": "Entonces el diálogo de booleana debería mostrar el mensaje de &quot;no hay extrusiones&quot;",
+      "startTime": "2026-05-24T20:38:00.718Z",
+      "children": [
+        {
+          "number": 16,
+          "description": "Diseñador waits until el mensaje de booleana sin extrusiones does equal true",
+          "startTime": "2026-05-24T20:38:00.725Z",
+          "children": [],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 34,
+          "result": "SUCCESS"
+        },
+        {
+          "number": 17,
+          "description": "Diseñador ensures that el mensaje de booleana sin extrusiones does equal true",
+          "startTime": "2026-05-24T20:38:00.781Z",
+          "children": [],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 8,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 93,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 18,
+      "description": "After",
+      "startTime": "2026-05-24T20:38:00.812Z",
+      "children": [],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 1,
+      "result": "SUCCESS"
+    }
+  ],
+  "userStory": {
+    "id": "aplicaci-n-cad---funcionalidades-principales",
+    "storyName": "Aplicación CAD — Funcionalidades principales",
+    "displayName": "Aplicación CAD — Funcionalidades principales",
+    "path": "cad-app",
+    "type": "feature",
+    "narrative": "Como diseñador que trabaja con modelos 3D\nQuiero usar la aplicación CAD en el navegador\nPara crear y editar bocetos y modelos tridimensionales",
+    "pathElements": [{ "name": "cad-app", "description": "Cad-app" }]
+  },
+  "startTime": "2026-05-24T20:37:59.176Z",
+  "context": "firefox,windows",
+  "driver": "firefox",
+  "tags": [
+    {
+      "name": "firefox 151.0.1",
+      "type": "browser",
+      "browserName": "firefox",
+      "browserVersion": "151.0.1",
+      "displayName": "firefox 151.0.1"
+    },
+    {
+      "name": "windows",
+      "type": "platform",
+      "platformName": "windows",
+      "platformVersion": "",
+      "displayName": "windows"
+    },
+    {
+      "name": "Aplicación CAD — Funcionalidades principales",
+      "type": "feature",
+      "displayName": "Aplicación CAD — Funcionalidades principales"
+    }
+  ],
+  "testSource": "JS",
+  "featureTag": {
+    "name": "Aplicación CAD — Funcionalidades principales",
+    "type": "feature",
+    "displayName": "Aplicación CAD — Funcionalidades principales"
+  },
+  "actors": [
+    {
+      "name": "Diseñador",
+      "can": [
+        "PerformActivities",
+        "AnswerQuestions",
+        "RaiseErrors",
+        "ScheduleWork { scheduler: { clock: { timeAdjustment: { milliseconds: 0 } }, interactionTimeout: { milliseconds: 5000 } } }",
+        "BrowseTheWeb (BrowseTheWebWithWebdriverIO)"
+      ]
+    }
+  ],
+  "result": "SUCCESS",
+  "duration": 1666
+}

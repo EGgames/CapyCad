@@ -1,4 +1,4 @@
-# Análisis de Madurez Profesional - STL-Model
+# Análisis de Madurez Profesional - CapyCad
 
 ## Objetivo
 
@@ -44,7 +44,7 @@ Implementar workflow `ci.yml` con gates bloqueantes en PR:
 
 - `pnpm install --frozen-lockfile`
 - `pnpm lint`
-- `pnpm --filter @stl-model/web type-check`
+- `pnpm --filter @capycad/web type-check`
 - `pnpm test:run`
 - `pnpm build`
 

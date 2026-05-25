@@ -1,8 +1,8 @@
-# Plan de Testing - STL Model CAD Web Application
+# Plan de Testing - CapyCad CAD Web Application
 
 ## Descripción General
 
-Este documento describe la estrategia de testing, estructura de archivos de prueba, convenciones y guías para ejecutar y mantener los tests unitarios del proyecto STL Model.
+Este documento describe la estrategia de testing, estructura de archivos de prueba, convenciones y guías para ejecutar y mantener los tests unitarios del proyecto CapyCad.
 
 ---
 
@@ -573,5 +573,5 @@ jobs:
 ---
 
 **Última actualización**: 2024-01-XX  
-**Mantenedores**: STL Model Team  
+**Mantenedores**: CapyCad Team  
 **Versión**: 1.0.0

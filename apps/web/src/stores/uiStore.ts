@@ -134,7 +134,9 @@ export const useUIStore = create<UIState>()(
       setBooleanTarget: (featureId) =>
         set((state) =>
           state.booleanWizard
-            ? { booleanWizard: { ...state.booleanWizard, step: 'select-tool', targetId: featureId } }
+            ? {
+                booleanWizard: { ...state.booleanWizard, step: 'select-tool', targetId: featureId },
+              }
             : {}
         ),
 
@@ -163,7 +165,13 @@ export const useUIStore = create<UIState>()(
       setExtrudePreviewActive: (v) =>
         set({
           extrudePreviewActive: v,
-          ...(v ? {} : { extrudePreviewDistance: 2.0, extrudePreviewDirection: 'positive', extrudePreviewEntityIds: [] }),
+          ...(v
+            ? {}
+            : {
+                extrudePreviewDistance: 2.0,
+                extrudePreviewDirection: 'positive',
+                extrudePreviewEntityIds: [],
+              }),
         }),
       setExtrudePreviewEntityIds: (ids) => set({ extrudePreviewEntityIds: ids }),
       setExtrudePreviewDistance: (d) => set({ extrudePreviewDistance: d }),
@@ -226,7 +234,7 @@ export const useUIStore = create<UIState>()(
       resetLayout: () => set({ panels: DEFAULT_PANELS }),
     }),
     {
-      name: 'stl-model-ui-layout',
+      name: 'capycad-ui-layout',
       version: 5,
       // Migración: garantiza valores por defecto para campos nuevos cuando el
       // usuario tiene un layout persistido de una versión previa.

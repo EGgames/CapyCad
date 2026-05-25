@@ -1,8 +1,8 @@
-# Arquitectura Técnica - STL-Model CAD Application
+# Arquitectura Técnica - CapyCad CAD Application
 
 ## Visión General
 
-STL-Model es una aplicación web CAD construida con arquitectura de **Single Page Application (SPA)** con capacidades offline mediante Progressive Web App (PWA). El sistema se divide en tres capas principales: Frontend (React + Three.js), Backend (Node.js + Express), y Storage (PostgreSQL + S3).
+CapyCad es una aplicación web CAD construida con arquitectura de **Single Page Application (SPA)** con capacidades offline mediante Progressive Web App (PWA). El sistema se divide en tres capas principales: Frontend (React + Three.js), Backend (Node.js + Express), y Storage (PostgreSQL + S3).
 
 ---
 
@@ -100,7 +100,7 @@ STL-Model es una aplicación web CAD construida con arquitectura de **Single Pag
 ## Estructura del Monorepo
 
 ```
-stl-model/
+capycad/
 ├── apps/
 │   ├── web/                    # Frontend React SPA
 │   │   ├── src/

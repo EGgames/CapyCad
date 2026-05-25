@@ -1,0 +1,194 @@
+{
+  "id": "aplicaci-n-cad---funcionalidades-principales;seleccionar-herramienta-de-arco;firefox-151-0-1;windows",
+  "name": "Seleccionar herramienta de arco",
+  "title": "Seleccionar herramienta de arco",
+  "manual": false,
+  "testSteps": [
+    {
+      "number": 1,
+      "description": "Before",
+      "startTime": "2026-05-24T20:37:51.107Z",
+      "children": [],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 1,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 2,
+      "description": "Dado que el usuario abre la aplicación CAD",
+      "startTime": "2026-05-24T20:37:51.108Z",
+      "children": [
+        {
+          "number": 3,
+          "description": "Diseñador abre la aplicación CAD en http://localhost:5173",
+          "startTime": "2026-05-24T20:37:51.111Z",
+          "children": [
+            {
+              "number": 4,
+              "description": "Diseñador navigates to &quot;http://localhost:5173&quot;",
+              "startTime": "2026-05-24T20:37:51.111Z",
+              "children": [],
+              "reportData": [],
+              "screenshots": [],
+              "duration": 661,
+              "result": "SUCCESS"
+            }
+          ],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 682,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 705,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 5,
+      "description": "Cuando el usuario selecciona la herramienta &quot;Arco (A)&quot;",
+      "startTime": "2026-05-24T20:37:51.813Z",
+      "children": [
+        {
+          "number": 6,
+          "description": "Diseñador hace click en la herramienta Arco (A)",
+          "startTime": "2026-05-24T20:37:51.818Z",
+          "children": [
+            {
+              "number": 7,
+              "description": "Diseñador espera que la toolbar esté lista",
+              "startTime": "2026-05-24T20:37:51.818Z",
+              "children": [],
+              "reportData": [],
+              "screenshots": [],
+              "duration": 22,
+              "result": "SUCCESS"
+            },
+            {
+              "number": 8,
+              "description": "Diseñador waits for 200ms",
+              "startTime": "2026-05-24T20:37:51.856Z",
+              "children": [],
+              "reportData": [],
+              "screenshots": [],
+              "duration": 202,
+              "result": "SUCCESS"
+            },
+            {
+              "number": 9,
+              "description": "Diseñador executes a synchronous script with arguments: [ page element located by css (&apos;[title=&quot;Arco (A)&quot;]&apos;) ]",
+              "startTime": "2026-05-24T20:37:52.073Z",
+              "children": [],
+              "reportData": [
+                {
+                  "id": "report-data-488608764ff3d27946b49a156a94d144ad1d0158",
+                  "isEvidence": false,
+                  "path": "",
+                  "title": "Script source",
+                  "contents": "arguments[0].click()"
+                }
+              ],
+              "screenshots": [],
+              "duration": 59,
+              "result": "SUCCESS"
+            }
+          ],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 334,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 355,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 10,
+      "description": "Entonces la herramienta &quot;Arco (A)&quot; debería estar activa",
+      "startTime": "2026-05-24T20:37:52.168Z",
+      "children": [
+        {
+          "number": 11,
+          "description": "Diseñador ensures that que la herramienta &quot;Arco (A)&quot; está activa does equal true",
+          "startTime": "2026-05-24T20:37:52.170Z",
+          "children": [],
+          "reportData": [],
+          "screenshots": [],
+          "duration": 14,
+          "result": "SUCCESS"
+        }
+      ],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 31,
+      "result": "SUCCESS"
+    },
+    {
+      "number": 12,
+      "description": "After",
+      "startTime": "2026-05-24T20:37:52.199Z",
+      "children": [],
+      "reportData": [],
+      "screenshots": [],
+      "duration": 1,
+      "result": "SUCCESS"
+    }
+  ],
+  "userStory": {
+    "id": "aplicaci-n-cad---funcionalidades-principales",
+    "storyName": "Aplicación CAD — Funcionalidades principales",
+    "displayName": "Aplicación CAD — Funcionalidades principales",
+    "path": "cad-app",
+    "type": "feature",
+    "narrative": "Como diseñador que trabaja con modelos 3D\nQuiero usar la aplicación CAD en el navegador\nPara crear y editar bocetos y modelos tridimensionales",
+    "pathElements": [{ "name": "cad-app", "description": "Cad-app" }]
+  },
+  "startTime": "2026-05-24T20:37:51.106Z",
+  "context": "firefox,windows",
+  "driver": "firefox",
+  "tags": [
+    {
+      "name": "firefox 151.0.1",
+      "type": "browser",
+      "browserName": "firefox",
+      "browserVersion": "151.0.1",
+      "displayName": "firefox 151.0.1"
+    },
+    {
+      "name": "windows",
+      "type": "platform",
+      "platformName": "windows",
+      "platformVersion": "",
+      "displayName": "windows"
+    },
+    {
+      "name": "Aplicación CAD — Funcionalidades principales",
+      "type": "feature",
+      "displayName": "Aplicación CAD — Funcionalidades principales"
+    }
+  ],
+  "testSource": "JS",
+  "featureTag": {
+    "name": "Aplicación CAD — Funcionalidades principales",
+    "type": "feature",
+    "displayName": "Aplicación CAD — Funcionalidades principales"
+  },
+  "actors": [
+    {
+      "name": "Diseñador",
+      "can": [
+        "PerformActivities",
+        "AnswerQuestions",
+        "RaiseErrors",
+        "ScheduleWork { scheduler: { clock: { timeAdjustment: { milliseconds: 0 } }, interactionTimeout: { milliseconds: 5000 } } }",
+        "BrowseTheWeb (BrowseTheWebWithWebdriverIO)"
+      ]
+    }
+  ],
+  "result": "SUCCESS",
+  "duration": 1124
+}

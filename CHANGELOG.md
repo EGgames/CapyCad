@@ -190,7 +190,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial project setup with Turborepo monorepo structure
 - TypeScript configuration with strict mode
 - ESLint and Prettier configuration
-- Shared types package (`@stl-model/shared-types`)
+- Shared types package (`@capycad/shared-types`)
 - Frontend application with React 18 + Vite 5
 - Three.js integration with react-three-fiber
 - Basic UI layout (Toolbar, Sidebar, Canvas, Properties Panel)

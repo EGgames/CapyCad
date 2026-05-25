@@ -27,8 +27,8 @@ npm install -g pnpm
 ### 1. Clonar el repositorio (si aplica)
 
 ```bash
-git clone https://github.com/tu-usuario/stl-model.git
-cd stl-model
+git clone https://github.com/tu-usuario/capycad.git
+cd capycad
 ```
 
 ### 2. Instalar dependencias
@@ -125,7 +125,7 @@ pnpm type-check
 ## Estructura del Proyecto
 
 ```
-stl-model/
+capycad/
 ├── apps/
 │   └── web/                    # Aplicación React (Vite)
 │       ├── src/

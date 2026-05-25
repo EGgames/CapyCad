@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const STORAGE_KEY = 'stl-model-theme';
+const STORAGE_KEY = 'capycad-theme';
 
 export function useDarkMode() {
   const [isDark, setIsDark] = useState<boolean>(() => {

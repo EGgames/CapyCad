@@ -1,4 +1,4 @@
-# Tests Unitarios - STL Model Web App
+# Tests Unitarios - CapyCad Web App
 
 Esta carpeta contiene la configuración global para todos los tests unitarios del proyecto.
 

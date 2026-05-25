@@ -1,4 +1,4 @@
-# Estado del Proyecto - STL-Model CAD Application
+# Estado del Proyecto - CapyCad CAD Application
 
 **Última actualización**: 8 de abril de 2026
 
@@ -52,7 +52,7 @@
 ## Estructura Actual
 
 ```
-STL-Model/
+CapyCad/
 ├── apps/
 │   ├── web/                          # Frontend React SPA
 │   │   └── src/

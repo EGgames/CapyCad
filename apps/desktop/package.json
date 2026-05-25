@@ -5,7 +5,7 @@
   "description": "CapyCad — Electron desktop wrapper",
   "repository": {
     "type": "git",
-    "url": "https://github.com/EGgames/stl-model.git"
+    "url": "https://github.com/EGgames/CapyCad.git"
   },
   "main": "src/main.js",
   "scripts": {
@@ -33,11 +33,20 @@
       {
         "from": "../web/dist",
         "to": "renderer",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "assets/icon.ico"
     },
     "mac": {

@@ -2,7 +2,7 @@
 
 ## ✨ Características Implementadas
 
-El editor 2D de STL-Model permite crear sketches 2D paramétricos que luego pueden convertirse en sólidos 3D mediante operaciones de extrusión, revolución, etc.
+El editor 2D de CapyCad permite crear sketches 2D paramétricos que luego pueden convertirse en sólidos 3D mediante operaciones de extrusión, revolución, etc.
 
 ---
 

@@ -4,7 +4,7 @@
  * Guarda automáticamente sketch + features cada 2 minutos.
  * Expone también la función `restoreSession` para recuperar el último estado.
  *
- * DB: 'stl-model-autosave', objectStore: 'autosave', key: 'current'
+ * DB: 'capycad-autosave', objectStore: 'autosave', key: 'current'
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -13,7 +13,7 @@ import { useFeatureStore } from '@/stores/featureStore';
 import { serializeProject, loadProject } from '@/lib/project/projectSerializer';
 import type { LoadedProject } from '@/lib/project/projectSerializer';
 
-const DB_NAME = 'stl-model-autosave';
+const DB_NAME = 'capycad-autosave';
 const DB_VERSION = 1;
 const STORE_NAME = 'autosave';
 const AUTOSAVE_KEY = 'current';

@@ -3,7 +3,7 @@ import { AnyFeature } from './cad';
 import { Sketch } from './geometry';
 
 /**
- * Proyecto STL-Model
+ * Proyecto CapyCad
  */
 export interface Project {
   id: EntityId;

@@ -1,6 +1,6 @@
 # 🎯 Sistema de Extrusión 3D - Guía Completa
 
-Documentación técnica del sistema de extrusión y operaciones CAD 3D de STL-Model.
+Documentación técnica del sistema de extrusión y operaciones CAD 3D de CapyCad.
 
 ---
 
@@ -553,4 +553,4 @@ Si persiste, verificar orientación de faces en triangulateShape().
 
 **Versión:** 0.2.0  
 **Última actualización:** 6 de abril de 2026  
-**Autor:** STL-Model Team
+**Autor:** CapyCad Team

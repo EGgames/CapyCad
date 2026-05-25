@@ -1,8 +1,8 @@
-# STL-Model - Aplicación CAD Web Todo-en-Uno
+# CapyCad - Aplicación CAD Web Todo-en-Uno
 
 <div align="center">
 
-![STL-Model](https://via.placeholder.com/800x200/4f46e5/ffffff?text=STL-Model+CAD+Web+App)
+![CapyCad](https://via.placeholder.com/800x200/4f46e5/ffffff?text=CapyCad+CAD+Web+App)
 
 **Diseña, modela y exporta piezas 3D directamente desde tu navegador**
 
@@ -15,9 +15,9 @@
 
 ---
 
-## 🎯 ¿Qué es STL-Model?
+## 🎯 ¿Qué es CapyCad?
 
-STL-Model es una aplicación web CAD profesional que combina la potencia de software de escritorio como AutoCAD y Fusion 360 con la accesibilidad de una plataforma web moderna. Diseña piezas 2D/3D, aplica operaciones CAD avanzadas (chaflanes, empalmes, booleanas) y exporta directamente a formatos de impresión 3D.
+CapyCad es una aplicación web CAD profesional que combina la potencia de software de escritorio como AutoCAD y Fusion 360 con la accesibilidad de una plataforma web moderna. Diseña piezas 2D/3D, aplica operaciones CAD avanzadas (chaflanes, empalmes, booleanas) y exporta directamente a formatos de impresión 3D.
 
 ### ✨ Características Principales
 
@@ -96,7 +96,7 @@ Ver [roadmap completo en PRD](docs/PRD.md#roadmap-sugerido)
 ## 📁 Estructura del Proyecto
 
 ```
-stl-model/
+capycad/
 ├── apps/
 │   ├── web/          # Frontend React (Vite)
 │   └── api/          # Backend Node.js (Fase 3+)
@@ -123,7 +123,7 @@ stl-model/
 
 ```bash
 # Clonar el repositorio (o navegar al directorio del proyecto)
-cd STL-Model
+cd capycad
 
 # Instalar dependencias
 pnpm install
