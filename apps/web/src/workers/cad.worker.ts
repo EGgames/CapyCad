@@ -442,7 +442,8 @@ function buildExtrudedShape(
   }
 
   const signedDistance = direction === 'negative' ? -distance : distance;
-  const extrusionVec = new oc.gp_Vec_4(0, signedDistance, 0);
+  // El sketch está en el plano XY de OCC (z=0). La extrusión debe ir en Z.
+  const extrusionVec = new oc.gp_Vec_4(0, 0, signedDistance);
 
   const prism = new oc.BRepPrimAPI_MakePrism_1(face, extrusionVec, false, true);
   return prism.Shape();

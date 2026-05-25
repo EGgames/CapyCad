@@ -32,11 +32,13 @@ describe('Convención de escala 2D↔3D↔OCC', () => {
     expect(Number(match![1])).toBe(EXPECTED_SCALE);
   });
 
-  it('cad.worker.ts extruye sobre el eje +Y (plano XZ del sketch)', () => {
-    // La extrusión debe ser perpendicular al plano del sketch dibujado por
-    // SketchIn3D (XZ con y=0). Si vuelve a (0,0,signedDistance) el sólido
-    // queda perpendicular al sketch en pantalla.
-    expect(workerSrc).toContain('new oc.gp_Vec_4(0, signedDistance, 0)');
+  it('cad.worker.ts extruye sobre el eje +Z de OCC (→ eje +Y de Three.js tras rotateGeometry90)', () => {
+    // La cara del sketch está en el plano XY de OCC (z=0).
+    // La extrusión perpendicular al sketch debe ir en el eje Z de OCC.
+    // Tras rotateGeometry90: OCC Z → Three.js Y (arriba) → sólido 3D correcto.
+    // Un vector (0, signedDistance, 0) extruiría en OCC Y → Three.js −Z (plano),
+    // lo que producía geometría 2D (bug corregido).
+    expect(workerSrc).toContain('new oc.gp_Vec_4(0, 0, signedDistance)');
   });
 
   it('SketchIn3D proyecta el sketch en el plano XZ (y=0)', () => {

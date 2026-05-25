@@ -76,28 +76,29 @@ apps/web/src/
 
 ### Tests Implementados
 
-| Módulo                  | Archivo                     | Suites | Casos | Estado |
-| ----------------------- | --------------------------- | ------ | ----- | ------ |
-| Store 2D                | `sketchStore.test.ts`       | 9      | 17    | ✅     |
-| Store 3D                | `featureStore.test.ts`      | 10     | 29    | ✅     |
-| Store Render            | `renderStore.test.ts`       | 10     | 62    | ✅     |
-| Utilidades              | `geometry.test.ts`          | 7      | 25    | ✅     |
-| Herramienta Línea       | `LineTool.test.ts`          | 7      | 17    | ✅     |
-| Herramienta Círculo     | `CircleTool.test.ts`        | 7      | 17    | ✅     |
-| Herramienta Rectángulo  | `RectangleTool.test.ts`     | 7      | 18    | ✅     |
-| CAD Worker Client       | `cadWorkerClient.test.ts`   | 12     | 50    | ✅     |
-| Hook CAD Worker         | `useCADWorker.test.ts`      | 5      | 7     | ✅     |
-| Hook Auto Save          | `useAutoSave.test.ts`       | 3      | 8     | ✅     |
-| Export STL (US-006)     | `stlExporter.test.ts`       | 3      | 17    | ✅     |
-| Export M3F              | `m3fExporter.test.ts`       | 3      | 18    | ✅     |
-| Proyecto .stlm (US-007) | `projectSerializer.test.ts` | 6      | 42    | ✅     |
-| Materiales PBR (US-015) | `materialPresets.test.ts`   | 4      | 21    | ✅     |
-| Export OBJ (US-013)     | `modelExporter.test.ts`     | 3      | 11    | ✅     |
-| Import STL/OBJ (US-014) | `modelImporter.test.ts`     | 4      | 16    | ✅     |
-| Restricciones (US-009)  | `constraintSolver.test.ts`  | 11     | 32    | ✅     |
-| Patrones (US-011)       | `patternEngine.test.ts`     | 4      | 23    | ✅     |
+| Módulo                    | Archivo                     | Suites | Casos | Estado |
+| ------------------------- | --------------------------- | ------ | ----- | ------ |
+| Store 2D                  | `sketchStore.test.ts`       | 9      | 17    | ✅     |
+| Store 3D                  | `featureStore.test.ts`      | 10     | 29    | ✅     |
+| Store Render              | `renderStore.test.ts`       | 10     | 62    | ✅     |
+| Utilidades                | `geometry.test.ts`          | 7      | 25    | ✅     |
+| Herramienta Línea         | `LineTool.test.ts`          | 7      | 17    | ✅     |
+| Herramienta Círculo       | `CircleTool.test.ts`        | 7      | 17    | ✅     |
+| Herramienta Rectángulo    | `RectangleTool.test.ts`     | 7      | 18    | ✅     |
+| CAD Worker Client         | `cadWorkerClient.test.ts`   | 12     | 50    | ✅     |
+| Hook CAD Worker           | `useCADWorker.test.ts`      | 5      | 7     | ✅     |
+| Hook Auto Save            | `useAutoSave.test.ts`       | 3      | 8     | ✅     |
+| Export STL (US-006)       | `stlExporter.test.ts`       | 3      | 17    | ✅     |
+| Export M3F                | `m3fExporter.test.ts`       | 3      | 18    | ✅     |
+| Proyecto .stlm (US-007)   | `projectSerializer.test.ts` | 6      | 42    | ✅     |
+| Materiales PBR (US-015)   | `materialPresets.test.ts`   | 4      | 21    | ✅     |
+| Export OBJ (US-013)       | `modelExporter.test.ts`     | 3      | 11    | ✅     |
+| Import STL/OBJ (US-014)   | `modelImporter.test.ts`     | 4      | 16    | ✅     |
+| Restricciones (US-009)    | `constraintSolver.test.ts`  | 11     | 32    | ✅     |
+| Patrones (US-011)         | `patternEngine.test.ts`     | 4      | 23    | ✅     |
+| Vector extrusión (US-004) | `extrusionUtils.test.ts`    | 4      | 10    | ✅     |
 
-**Total**: 18 archivos, 107+ test suites, 430 test cases
+**Total**: 19 archivos, 111+ test suites, 440 test cases
 
 ### Objetivos de Cobertura
 
